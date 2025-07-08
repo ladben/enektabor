@@ -26,9 +26,22 @@ export const useItems = () => {
     }
   };
 
+  const updateItem = async (id, updates) => {
+    const { data, error } = await supabase
+      .from('items')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (!error) {
+      dispatch({ type: 'UPDATE_ITEM', payload: data });
+    }
+  };
+
   useEffect(() => {
     fetchItems();
   }, [fetchItems]);
 
-  return { items: state.items, addItem, deleteItem };
+  return { items: state.items, addItem, deleteItem, updateItem };
 };
