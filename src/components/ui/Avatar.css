@@ -1,0 +1,15 @@
+.avatar {
+  overflow: hidden;
+}
+
+.avatar.selected {
+border: 3px solid var(--color-text);
+}
+
+.avatar.faded {
+  filter: brightness(.5);
+}
+
+.avatar img {
+  display: block;
+}

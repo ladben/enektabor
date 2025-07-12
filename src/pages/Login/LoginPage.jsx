@@ -1,18 +1,26 @@
-import { useState } from "react";
-import PasswordStep from "./PasswordStep";
-import SelectUserStep from "./SelectUserStep";
+import { useRef, useState } from "react";
 import { useUser } from "../../context/UserContext";
 import { useNavigate } from "react-router-dom";
 
+// import { Swiper, SwiperSlide } from "swiper/react";
+// import { Navigation } from "swiper/modules";
+// import 'swiper/css';
+
+import { Sequence } from "../../components";
+import PasswordStep from "./PasswordStep";
+import SelectUserStep from "./SelectUserStep";
+
 const LoginPage = () => {
-  const [step, setStep] = useState(0);
+  const seqRef = useRef();
   const [competition, setCompetition] = useState(null);
+
+  // const [step, setStep] = useState(0);
   const { user } = useUser();
   const navigate = useNavigate();
 
   const handlePasswordSuccess = (competition) => {
     setCompetition(competition);
-    setStep(1);
+    seqRef.current?.slideNext();
   };
 
   const handlePostLoginRedirect = () => {
@@ -29,16 +37,19 @@ const LoginPage = () => {
   }
 
   return (
-    <div className="w-full h-screen overflow-hidden">
-      <div className="transition-transform duration-500 flex w-[200%]">
-        <div className={`w-1/2 ${step === 0 ? '' : '-translate-x-full'}`}>
-          <PasswordStep onSuccess={handlePasswordSuccess} />
-        </div>
-        <div className={`w-1/2 ${step === 1 ? '' : 'translate-x-full'}`}>
-          {competition && <SelectUserStep competition={competition}/>}
-        </div>
+    <Sequence ref={seqRef}>
+
+      {/* Password screen */}
+      <div className="flex flex-column gap-24 flex-align-center">
+        <PasswordStep onSuccess={handlePasswordSuccess} />
       </div>
-    </div>
+
+      {/* User select screen */}
+      <div className="flex flex-column gap-24 flex-align-center">
+        {competition && <SelectUserStep competition={competition} /> }
+      </div>
+      
+    </Sequence>
   );
 }
  

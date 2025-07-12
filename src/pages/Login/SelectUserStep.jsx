@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { useUser } from "../../context/UserContext";
-import { Button } from "../../components";
+import { Avatar, Button, GridFlow, Title } from "../../components";
 
 const SelectUserStep = ({ competition }) => {
   const [users, setUsers] = useState([]);
@@ -36,23 +36,25 @@ const SelectUserStep = ({ competition }) => {
   };
 
   return (
-    <div className="p-4">
-      <div className="grid grid-cols-2 gap-4">
+    <>
+      <Title text="Ki vagy?" />
+      <GridFlow>
         {users.map((u) => (
           <div
             key={u.user_id}
             onClick={() => setSelectedId(u.user_id)}
-            className={`cursor-pointer p-2 border-rounded ${
-              selectedId === u.user_id ? 'border-blue-500' : 'border-gray-300'
-            }`}
+            style={{maxWidth: 'calc((100% - 30px) / 4)'}}
           >
-            <img src={u.people.avatar} alt="" className="w-full rounded-full mb.1" />
-            <p className="text-center">{u.people.name}</p>
+            <Avatar
+              imgSrc={u.people.avatar ? `data:image/png;base64,${u.people.avatar}` : '/no_avatar.png'}
+              imgName={u.people.name}
+              state={!selectedId ? 'default' : selectedId === u.user_id ?'selected' : 'faded'}
+            />
           </div>
         ))}
-      </div>
+      </GridFlow>
       <Button onClick={handleContinue} />
-    </div>
+    </>
   );
 };
  

@@ -1,0 +1,6 @@
+.button-control {
+  border: 2px solid var(--color-background);
+  outline: none;
+  -webkit-tap-highlight-color: none;
+  border-radius: 500px;
+}
