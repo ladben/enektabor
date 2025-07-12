@@ -13,8 +13,11 @@ const SelectUserStep = ({ competition }) => {
       const { data } = await supabase
         .from('competition_participants')
         .select('user_id, is_voter, is_jury, is_performer, people(name, avatar)')
-        .eq('competition_id', competition.id);
-      setUsers(data);
+        .eq('competition_id', competition.id)
+      const sorted = [...data].sort((a, b) =>
+        a.people.name.localeCompare(b.people.name)
+      );
+      setUsers(sorted);
     };
     fetch();
   }, [competition.id]);
@@ -46,7 +49,7 @@ const SelectUserStep = ({ competition }) => {
             style={{maxWidth: 'calc((100% - 30px) / 4)'}}
           >
             <Avatar
-              imgSrc={u.people.avatar ? `data:image/png;base64,${u.people.avatar}` : null}
+              imgSrc={u.people.avatar}
               imgName={u.people.name}
               state={!selectedId ? 'default' : selectedId === u.user_id ?'selected' : 'faded'}
             />

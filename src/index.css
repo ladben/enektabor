@@ -183,6 +183,10 @@ h2 {
   padding-bottom: 8px;
 }
 
+.pb-96 {
+  padding-bottom: 96px;
+}
+
 .m-auto {
   margin: auto;
 }
