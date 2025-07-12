@@ -13,3 +13,7 @@ border: 3px solid var(--color-text);
 .avatar img {
   display: block;
 }
+
+.avatar img.no-image-fade {
+  filter: brightness(.5);
+}

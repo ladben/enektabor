@@ -45,7 +45,7 @@ const LoginPage = () => {
       </div>
 
       {/* User select screen */}
-      <div className="flex flex-column gap-24 flex-align-center">
+      <div className="flex flex-column gap-24 flex-align-center h-100 ofy-hidden">
         {competition && <SelectUserStep competition={competition} /> }
       </div>
       

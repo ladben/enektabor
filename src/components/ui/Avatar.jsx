@@ -12,8 +12,9 @@ const Avatar = ({imgSrc, imgName, state = 'default'}) => {
   }
 
   return (
-    <div className={`avatar ${className} w-100 b-radius-10`}>
-      <img src={imgSrc} alt={imgName} className='w-100' />
+    <div className={`avatar ${className} w-100 b-radius-10 pos-rel`}>
+      {!imgSrc && <p className='pos-abs w-100 h-100 flex flex-align-center flex-justify-center text-color-white text-sm px-4 zindex-1'>{imgName}</p>}
+      <img src={imgSrc ? imgSrc : '/no_avatar.png'} alt={imgName} className={`w-100 ${!imgSrc && 'no-image-fade'}`} />
     </div>
   );
 }

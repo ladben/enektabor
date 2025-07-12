@@ -46,14 +46,14 @@ const SelectUserStep = ({ competition }) => {
             style={{maxWidth: 'calc((100% - 30px) / 4)'}}
           >
             <Avatar
-              imgSrc={u.people.avatar ? `data:image/png;base64,${u.people.avatar}` : '/no_avatar.png'}
+              imgSrc={u.people.avatar ? `data:image/png;base64,${u.people.avatar}` : null}
               imgName={u.people.name}
               state={!selectedId ? 'default' : selectedId === u.user_id ?'selected' : 'faded'}
             />
           </div>
         ))}
       </GridFlow>
-      <Button onClick={handleContinue} />
+      {selectedId && <Button onClick={handleContinue} className="pos-abs b-0" iconType="tick" text="Folytatás" animation="slide-from-bottom"/>}
     </>
   );
 };
