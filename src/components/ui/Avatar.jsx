@@ -1,6 +1,10 @@
+import { useState } from 'react';
 import './Avatar.css';
+import Spinner from './Spinner';
 
-const Avatar = ({imgSrc, imgName, state = 'default'}) => {
+const Avatar = ({imgSrc, imgName, state = 'default' }) => {
+  const [loaded, setLoaded] = useState(false);
+
   let className = 'elevation-sm';
 
   if (state === 'selected') {
@@ -12,9 +16,20 @@ const Avatar = ({imgSrc, imgName, state = 'default'}) => {
   }
 
   return (
-    <div className={`avatar ${className} w-100 b-radius-10 pos-rel`}>
-      {!imgSrc && <p className='pos-abs w-100 h-100 flex flex-align-center flex-justify-center text-color-white text-sm px-4 zindex-1'>{imgName}</p>}
-      <img src={imgSrc ? imgSrc : '/no_avatar.png'} alt={imgName} className={`w-100 ${!imgSrc && 'no-image-fade'}`} />
+    <div className={`avatar ${className} w-100 h-100 b-radius-10 pos-rel`}>
+      {!loaded && <Spinner />}
+      {(!imgSrc || !loaded) && <p className='pos-abs w-100 h-100 flex flex-align-center flex-justify-center text-color-white text-sm px-4 zindex-1'>{imgName}</p>}
+      <img
+        src={imgSrc ? imgSrc : '/no_avatar.png'}
+        alt={imgName}
+        loading='lazy'
+        onLoad={() => setLoaded(true)}
+        className={`w-100 ${!imgSrc && 'no-image-fade'}`}
+        style={{
+          opacity: loaded ? 1 : 0.5,
+          transition: 'opacity 0.3s ease'
+        }}
+      />
     </div>
   );
 }

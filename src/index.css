@@ -196,6 +196,10 @@ h2 {
 }
 
 /* SIZING */
+.w-50 {
+  width: 50%;
+}
+
 .w-100 {
   width: 100%;
 }
@@ -206,6 +210,10 @@ h2 {
 
 .w-100dv {
   width: 100dvw;
+}
+
+.h-50 {
+  height: 50%;
 }
 
 .h-100 {
@@ -226,6 +234,10 @@ h2 {
 
 .h-max-content {
   height: max-content;
+}
+
+.ar-square {
+  aspect-ratio: 1;
 }
 
 /* BORDERS */
