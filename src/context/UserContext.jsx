@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { createContext, useContext, useEffect, useState } from "react";
 
 const UserContext = createContext();
@@ -7,6 +8,7 @@ const SESSION_DURATION_MS = 1000 * 60 * 60 * 12; // 12 hours
 
 export const UserProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const queryClient = useQueryClient();
 
   // Load user from localStorage
   useEffect(() => {
@@ -33,6 +35,7 @@ export const UserProvider = ({ children }) => {
   const logout = () => {
     localStorage.removeItem(LOCAL_STORAGE_KEY);
     setUser(null);
+    queryClient.removeQueries({ queryKey: ['performances'] });
   };
 
   const isRole = (competitionId, roleKey) => {

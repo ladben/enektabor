@@ -13,8 +13,6 @@ import SelectUserStep from "./SelectUserStep";
 const LoginPage = () => {
   const seqRef = useRef();
   const [competition, setCompetition] = useState(null);
-
-  // const [step, setStep] = useState(0);
   const { user } = useUser();
   const navigate = useNavigate();
 
