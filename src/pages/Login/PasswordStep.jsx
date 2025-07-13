@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useSequenceConfig } from "../../context/SequenceContext";
-import { supabase } from '../../lib/supabaseClient';
+import { useActiveCompetition } from "../../hooks/useActiveCompetition";
 import bcrypt from "bcryptjs";
 
 import { Button, TextInput, Title } from "../../components";
@@ -11,34 +11,26 @@ const PasswordStep = ({ onSuccess }) => {
   const [isPressed, setIsPressed] = useState(false);
   const { BUTTON_PRESSED_TIME, SWIPE_DELAY } = useSequenceConfig();
 
+  const { data: competition } = useActiveCompetition();
+
   const handleSubmit = async () => {
     setError('');
     setIsPressed(true);
 
-    setTimeout(() => {
-      setIsPressed(false);
-    }, BUTTON_PRESSED_TIME);
+    setTimeout(() => setIsPressed(false), BUTTON_PRESSED_TIME);
 
-    const { data, error } = await supabase
-      .from('competitions')
-      .select('*')
-      .eq('is_active', true)
-      .single();
-
-    if (error || !data) {
-      setError('Competition not found');
+    if (!competition) {
+      setError('No active competitions found');
       return;
     }
 
-    const match = await bcrypt.compare(password, data.password);
+    const match = await bcrypt.compare(password, competition.password);
     if (!match) {
       setError('Incorrect password');
       return;
     }
 
-    setTimeout(() => {
-      onSuccess(data);
-    }, BUTTON_PRESSED_TIME + SWIPE_DELAY);
+    setTimeout(() => onSuccess(competition), BUTTON_PRESSED_TIME + SWIPE_DELAY);
   };
 
   return (
