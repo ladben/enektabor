@@ -1,26 +1,12 @@
-import { useState, useEffect } from "react";
-import { supabase } from "../../lib/supabaseClient";
+import { useState } from "react";
 import { useUser } from "../../context/UserContext";
+import { usePeople } from "../../hooks/usePeople";
 import { Avatar, Button, GridFlow, Title } from "../../components";
 
 const SelectUserStep = ({ competition }) => {
-  const [users, setUsers] = useState([]);
+  const { data: users = [] } = usePeople(competition.id);
   const [selectedId, setSelectedId] = useState(null);
   const { loginAsUser } = useUser();
-
-  useEffect(() => {
-    const fetch = async () => {
-      const { data } = await supabase
-        .from('competition_participants')
-        .select('user_id, is_voter, is_jury, is_performer, people(name, avatar)')
-        .eq('competition_id', competition.id)
-      const sorted = [...data].sort((a, b) =>
-        a.people.name.localeCompare(b.people.name)
-      );
-      setUsers(sorted);
-    };
-    fetch();
-  }, [competition.id]);
 
   const handleContinue = () => {
     const selected = users.find((u) => u.user_id === selectedId);
@@ -47,16 +33,25 @@ const SelectUserStep = ({ competition }) => {
             key={u.user_id}
             onClick={() => setSelectedId(u.user_id)}
             style={{maxWidth: 'calc((100% - 30px) / 4)'}}
+            className="w-100 ar-square"
           >
             <Avatar
               imgSrc={u.people.avatar}
               imgName={u.people.name}
-              state={!selectedId ? 'default' : selectedId === u.user_id ?'selected' : 'faded'}
+              state={!selectedId ? 'default' : selectedId === u.user_id ? 'selected' : 'faded'}
             />
           </div>
         ))}
       </GridFlow>
-      {selectedId && <Button onClick={handleContinue} className="pos-abs b-0" iconType="tick" text="Folytatás" animation="slide-from-bottom"/>}
+      {selectedId && (
+        <Button
+          onClick={handleContinue}
+          className="pos-abs b-0"
+          iconType="tick"
+          text="Folytatás"
+          animation="slide-from-bottom"
+        />
+      )}
     </>
   );
 };
