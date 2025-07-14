@@ -47,7 +47,7 @@ const PasswordStep = ({ onSuccess }) => {
         iconType="tick"
         onClick={handleSubmit}
         isPressed={isPressed}
-        className={"mb-24"}
+        className={"mb-16"}
       />
       {error && <p className="text-color-acc mt-2">{error}</p>}
     </>

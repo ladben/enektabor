@@ -49,7 +49,7 @@ const SongChoose = () => {
     <div
       className={`
         flex flex-column gap-24 flex-align-center
-        pb-96
+        pb-112
         h-100
         pos-rel
       `}

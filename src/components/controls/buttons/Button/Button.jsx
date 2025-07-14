@@ -31,7 +31,8 @@ const Button = ({
         button-control
         elevation-button
         flex flex-row gap-10 flex-align-center
-        px-16 py-8 w-max-content
+        w-max-content mb-16
+        ${iconType === '' ? 'px-24 py-18' : 'px-16 py-8'}
         bg-acc
         text-h2
         ${isPressed ? 'bg-acc-dark' : ''}
