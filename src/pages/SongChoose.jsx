@@ -26,7 +26,7 @@ const SongChoose = () => {
   },[performances, selectedPerformanceId, setSelectedPerformanceId]);
 
   useEffect(() => {
-    const timeout = setTimeout(() => setAnimateNow(true), 200);
+    const timeout = setTimeout(() => setAnimateNow(true), 500);
     return () => clearTimeout(timeout);
   },[]);
 

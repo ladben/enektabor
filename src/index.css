@@ -196,6 +196,15 @@ h2 {
   padding-bottom: 8px;
 }
 
+.py-48 {
+  padding-top: 48px;
+  padding-bottom: 48px;
+}
+
+.pt-48 {
+  padding-top: 48px;
+}
+
 .pb-8 {
   padding-bottom: 8px;
 }
@@ -270,6 +279,10 @@ h2 {
 
 .border-bg {
   border-color: var(--color-background);
+}
+
+.border-text {
+  border-color: var(--color-text);
 }
 
 .b-radius-10 {

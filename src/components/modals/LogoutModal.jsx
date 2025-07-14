@@ -36,11 +36,12 @@ const LogoutModal = ({ onClose }) => {
     >
       <motion.div
         className={`
-          m-auto flex flex-column flex-align-center gap-10
-          bg-white
-          p-32 b-radius-32
+          m-auto flex flex-column flex-align-center gap-32
+          bg-bg
+          text-color-white
+          p-32 pt-48 b-radius-32
           elevation-md-blue
-          border-md border-bg
+          border-md border-text
           pos-rel
         `}
         initial={{ opacity: 0, y: 30, scale: 0.95}}
@@ -49,7 +50,7 @@ const LogoutModal = ({ onClose }) => {
         transition={{ duration: 0.25, ease: 'easeOut' }}
       >
         <img
-          src='/x.svg'
+          src='/x-text.svg'
           alt='close modal'
           className='pos-abs t-0 r-0 p-12'
           style={{width: '50px', height: '50px'}}
