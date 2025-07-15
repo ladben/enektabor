@@ -2,10 +2,14 @@ import { useState } from 'react';
 import './Avatar.css';
 import Spinner from './Spinner';
 
-const Avatar = ({imgSrc, imgName, state = 'default' }) => {
+const Avatar = ({imgSrc, imgName, state = 'default', smallImg }) => {
   const [loaded, setLoaded] = useState(false);
 
   let className = 'elevation-sm';
+
+  if (state === 'simple') {
+    className = '';
+  }
 
   if (state === 'selected') {
     className = 'selected elevation-sm';
@@ -16,7 +20,7 @@ const Avatar = ({imgSrc, imgName, state = 'default' }) => {
   }
 
   return (
-    <div className={`avatar ${className} w-100 h-100 b-radius-10 pos-rel`}>
+    <div className={`avatar ${className} w-100 h-100 b-radius-10 pos-rel ${smallImg ? 'small' : ''}`}>
       {!loaded && <Spinner />}
       {(!imgSrc || !loaded) && <p className='pos-abs w-100 h-100 flex flex-align-center flex-justify-center text-color-white text-sm px-4 zindex-1'>{imgName}</p>}
       <img

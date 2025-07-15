@@ -22,8 +22,6 @@ const SelectPerformersStep = ({ performances, max, selected, onConfirm }) => {
   const isSelected = (id) => selectedIds.includes(id);
   const canConfirm = selectedIds.length === max;
 
-  console.log(performances);
-
   return (
     <>
       <Title text={`Szavazz az első ${max} helyezettre`} />

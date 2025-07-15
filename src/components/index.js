@@ -12,4 +12,5 @@ export { default as Sequence } from './Sequence/Sequence';
 export { default as Avatar } from './ui/Avatar';
 export { default as GridFlow } from './ui/GridFlow';
 export { default as Spinner } from './ui/Spinner';
+export { default as Subtitle } from './ui/Subtitle';
 export { default as Title } from './ui/Title';

@@ -163,6 +163,10 @@ h2 {
   padding: 12px;
 }
 
+.p-16 {
+  padding: 16px;
+}
+
 .p-20 {
   padding: 20px;
 }
@@ -181,6 +185,11 @@ h2 {
   padding-right: 8px;
 }
 
+.px-12 {
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
 .px-16 {
   padding-left: 16px;
   padding-right: 16px;
@@ -194,6 +203,11 @@ h2 {
 .px-50 {
   padding-left: 50px;
   padding-right: 50px;
+}
+
+.py-4 {
+  padding-top: 4px;
+  padding-bottom: 4px;
 }
 
 .py-8 {
@@ -217,6 +231,10 @@ h2 {
 
 .pb-8 {
   padding-bottom: 8px;
+}
+
+.pb-16 {
+  padding-bottom: 16px;
 }
 
 .pb-64 {
@@ -301,6 +319,10 @@ h2 {
 
 .border-text {
   border-color: var(--color-text);
+}
+
+.b-radius-5 {
+  border-radius: 5px;
 }
 
 .b-radius-10 {

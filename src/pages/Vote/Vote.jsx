@@ -15,6 +15,7 @@ const Vote = () => {
 
   const [selectedPerformers, setSelectedPerformers] = useState([]);
   const [miscVotes, setMiscVotes] = useState({});
+  const [rankingEntries, setRankingEntries] = useState([]);
 
   const userId = user?.user_id;
   const competitionId = user?.competition_id;
@@ -31,7 +32,13 @@ const Vote = () => {
     seqRef.current?.slideNext();
   };
 
-  const handleRankConfirmed = () => {
+  const handleRankConfirmed = (rankedPerformers) => {
+    const ranking = rankedPerformers.map((p, index) => ({
+      performance_id: p.id,
+      rank: index + 1,
+    }));
+
+    setRankingEntries(ranking);
     seqRef.current?.slideNext();
   };
 
@@ -46,6 +53,10 @@ const Vote = () => {
       seqRef.current?.slideNext();
     }
   };
+
+  const handleBackStep = () => {
+    seqRef.current?.slidePrev();
+  }
 
   return (
     <Sequence ref={seqRef}>
@@ -63,7 +74,8 @@ const Vote = () => {
       <div className="flex flex-column gap-24 flex-align-center h-100 ofy-hidden">
         <RankPerformersStep
           performers={selectedPerformers}
-          allPerformances={performances}
+          performances={performances}
+          onBack={handleBackStep}
           onConfirm={handleRankConfirmed}
         />
       </div>
@@ -84,7 +96,7 @@ const Vote = () => {
       {/* Step 4: Final Review */}
       <div className="flex flex-column gap-24 flex-align-center h-100 ofy-hidden">
         <ReviewVoteStep
-          rankings={selectedPerformers}
+          rankings={rankingEntries}
           miscVotes={miscVotes}
           performances={performances}
           onSubmit={() => {
