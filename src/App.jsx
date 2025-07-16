@@ -8,6 +8,7 @@ import LoginPage from './pages/Login/LoginPage';
 import SongChoose from './pages/SongChoose';
 import Vote from './pages/Vote/Vote';
 import Thanks from './pages/Thanks';
+import Results from './pages/Results';
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
           <Route path="/songChoose" element={<SongChoose />} />
           <Route path="/vote" element={<Vote />} />
           <Route path="/thanks" element={<Thanks />} />
+          <Route path="/results" element={<Results />} />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>

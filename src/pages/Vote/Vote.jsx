@@ -27,10 +27,6 @@ const Vote = () => {
 
   if (!user) return null;
 
-  console.log('selectedPerformers: ', selectedPerformers);
-  console.log('miscVotes: ', miscVotes);
-  console.log('rankingEntries: ', rankingEntries);
-
   const handlePerformersSelected = (ids) => {
     setSelectedPerformers(ids);
     seqRef.current?.slideNext();

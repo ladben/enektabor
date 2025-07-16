@@ -13,8 +13,6 @@ const VoteMiscStep = ({ category, performances, selected, onSelect, onConfirm, o
     onSelect(id);
   };
 
-  console.log('currentSelection: ', currentSelection);
-
   return (
     <>
       <div className="flex flex-column flex-align-center">

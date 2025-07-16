@@ -1,5 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
 import { supabase } from "../lib/supabaseClient";
+import { useQuery } from "@tanstack/react-query";
 
 export const useFinalizedVote = ({ userId, competitionId }) => {
   return useQuery({
@@ -15,12 +15,8 @@ export const useFinalizedVote = ({ userId, competitionId }) => {
         .single();
 
       if (error && error.code !== 'PGRST116') throw new Error(error.message);
-
       return data;
     },
     enabled: !!userId && !!competitionId,
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
-    staleTime: 1000 * 60 * 5,
   });
 };

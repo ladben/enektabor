@@ -13,7 +13,6 @@ const Box = ({
   smallImg=false,
   autoHeight=false,
 }) => {
-  console.log('badgeText: ', badgeText);
   return (
     <div
       onClick={onClick}

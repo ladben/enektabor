@@ -11,7 +11,7 @@ const LoginPage = () => {
   const seqRef = useRef();
   const [competition, setCompetition] = useState(null);
   const { user } = useUser();
-  const { data: finalizedVote } = useFinalizedVote({ userId: user?.user_id, competitionId: user?.competition_id });
+  const { data: finalizedVote, isLoading: finalizedVoteLoading } = useFinalizedVote({ userId: user?.user_id, competitionId: user?.competition_id });
   const navigate = useNavigate();
 
   const handlePasswordSuccess = (competition) => {
@@ -29,7 +29,7 @@ const LoginPage = () => {
   };
 
   // if already logged in, redirect
-  if (user && competition) {
+  if (user && competition && !finalizedVoteLoading) {
     handlePostLoginRedirect();
     return null;
   }
