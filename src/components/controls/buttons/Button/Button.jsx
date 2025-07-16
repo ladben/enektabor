@@ -13,8 +13,6 @@ const Button = ({
   ...props
 }) => {
 
-  console.log('disabled: ', disabled);
-
   const animations = {
     'slide-from-bottom': {
       initial: { y: '100%', opacity: 0 },

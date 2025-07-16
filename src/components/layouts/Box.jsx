@@ -11,14 +11,16 @@ const Box = ({
   avatar=null,
   badgeText=null,
   smallImg=false,
+  autoHeight=false,
 }) => {
+  console.log('badgeText: ', badgeText);
   return (
     <div
       onClick={onClick}
       className={`
         box
         flex flex-row gap-10 p-20 flex-align-center
-        b-radius-20 h-100 w-100
+        b-radius-20 ${!autoHeight ? 'h-100' : ''} w-100
         pos-rel
         ${state ? state : ''}
         ${className ? className : ''}`}
@@ -27,7 +29,7 @@ const Box = ({
       <div className='flex-fill flex flex-align-center flex-justify-center'>
         <p>{artist} - {title}</p>
       </div>
-      {badgeText && <div className='badge pos-abs text-color-bg bg-acc b-radius-5'>{badgeText}</div>}
+      {badgeText && <div className='badge pos-abs text-color-bg bg-acc b-radius-5 zindex-10'>{badgeText}</div>}
     </div>
   );
 }

@@ -25,7 +25,7 @@ const VoteMiscStep = ({ category, performances, selected, onSelect, onConfirm, o
         {performances.map((p) => (
           <div
             key={p.id}
-            onClick={() => handleClick(p.performer_id)}
+            onClick={() => handleClick(p.id)}
             style={{maxWidth: 'calc((100% - 30px) / 4)'}}
             className="w-100 ar-square"
           >
@@ -35,7 +35,7 @@ const VoteMiscStep = ({ category, performances, selected, onSelect, onConfirm, o
               state={
                 !currentSelection
                   ? 'default'
-                  : currentSelection === p.performer_id
+                  : currentSelection === p.id
                   ? 'selected'
                   : 'faded'
               }

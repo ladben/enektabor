@@ -1,16 +1,15 @@
 import { useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
 import { useUser } from "../../context/UserContext";
 import { usePerformancesForVoting } from "../../hooks/usePerformancesForVoting";
 import { useMiscCategoriesForCompetition } from "../../hooks/useMiscCategoriesForCompetition";
 import { useActiveCompetition } from "../../hooks/useActiveCompetition";
+import { useSubmitVote } from "../../hooks/useSubmitVote";
 
 import { Sequence } from "../../components";
 import { RankPerformersStep, ReviewVoteStep, SelectPerformersStep, VoteMiscStep } from "./steps";
 
 const Vote = () => {
   const seqRef = useRef();
-  const navigate = useNavigate();
   const { user } = useUser();
 
   const [selectedPerformers, setSelectedPerformers] = useState([]);
@@ -20,6 +19,7 @@ const Vote = () => {
   const userId = user?.user_id;
   const competitionId = user?.competition_id;
 
+  const { submitVote } = useSubmitVote();
   const { data: performances = [] } = usePerformancesForVoting(competitionId, userId);
   const { data: miscCategories = [] } = useMiscCategoriesForCompetition(competitionId);
   const { data: competition } = useActiveCompetition();
@@ -57,6 +57,18 @@ const Vote = () => {
       seqRef.current?.slideNext();
     }
   };
+
+  const handleVoteSubmit = async () => {
+    const success = await submitVote({
+      competitionId: user.competition_id,
+      rankings: rankingEntries,
+      miscVotes: miscVotes,
+    });
+
+    if (!success) {
+      throw new Error('Submitting vote was unsuccessful');
+    }
+  }
 
   const handleBackStep = () => {
     seqRef.current?.slidePrev();
@@ -104,10 +116,9 @@ const Vote = () => {
           rankings={rankingEntries}
           miscVotes={miscVotes}
           performances={performances}
-          onSubmit={() => {
-            // save vote for db
-            navigate("/thanks");
-          }}
+          categories={miscCategories}
+          onSubmit={handleVoteSubmit}
+          onBack={handleBackStep}
         />
       </div>
     </Sequence>
