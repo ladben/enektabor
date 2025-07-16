@@ -27,6 +27,10 @@ const Vote = () => {
 
   if (!user) return null;
 
+  console.log('selectedPerformers: ', selectedPerformers);
+  console.log('miscVotes: ', miscVotes);
+  console.log('rankingEntries: ', rankingEntries);
+
   const handlePerformersSelected = (ids) => {
     setSelectedPerformers(ids);
     seqRef.current?.slideNext();
@@ -81,7 +85,7 @@ const Vote = () => {
       </div>
 
       {/* Step 3+: Misc Category Voting */}
-      {miscCategories.map((cat, index) => {
+      {miscCategories?.map((cat, index) => (
         <div key={cat.id} className="flex flex-column gap-24 flex-align-center h-100 ofy-hidden">
           <VoteMiscStep
             category={cat}
@@ -89,9 +93,10 @@ const Vote = () => {
             selected={miscVotes[cat.id]}
             onSelect={(id) => handleMiscVote(cat.id, id)}
             onConfirm={() => handleMiscContinue(index)}
+            onBack={handleBackStep}
           />
         </div>
-      })}
+      ))}
 
       {/* Step 4: Final Review */}
       <div className="flex flex-column gap-24 flex-align-center h-100 ofy-hidden">

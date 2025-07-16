@@ -19,9 +19,6 @@ const RankPerformersStep = ({ performers, performances, onBack, onConfirm }) => 
     setRanked(items);
   };
 
-  console.log("perforemers in comp: ", performers);
-  console.log("ranked: ", ranked);
-
   return (
     <>
       <div className="flex flex-column flex-align-center">

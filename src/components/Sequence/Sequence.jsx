@@ -15,6 +15,8 @@ const Sequence = forwardRef(({ children, speed = 500, onSlideChange, BUTTON_PRES
     getIndex: () => swiperRef.current?.activeIndex,
   }));
 
+  const flatChildren = children.flat();
+
   return (
     <SequenceContext.Provider value={{ BUTTON_PRESSED_TIME, SWIPE_DELAY}}>
       <Swiper
@@ -25,8 +27,8 @@ const Sequence = forwardRef(({ children, speed = 500, onSlideChange, BUTTON_PRES
         onSlideChange={onSlideChange}
         className="w-100"
       >
-        {Array.isArray(children)
-          ? children.map((child, idx) => <SwiperSlide key={idx}>{child}</SwiperSlide>)
+        {Array.isArray(flatChildren)
+          ? flatChildren.map((child, idx) => <SwiperSlide key={idx}>{child}</SwiperSlide>)
           : <SwiperSlide>{children}</SwiperSlide>
         }
       </Swiper>
