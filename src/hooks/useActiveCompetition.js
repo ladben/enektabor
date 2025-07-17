@@ -14,9 +14,11 @@ export const useActiveCompetition = () => {
       if (error || !data) throw new Error('No active competitions found');
       return data;
     },
-    refetchOnMount: false,
+    refetchOnMount: true,
     refetchOnWindowFocus: false,
-    staleTime: 1000 * 60 * 60, // 1 hour
+    refetchOnReconnect: false,
+    staleTime: 0,
+    cacheTime: 0,
     retry: false,
   });
 };

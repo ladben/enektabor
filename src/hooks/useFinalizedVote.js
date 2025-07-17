@@ -13,7 +13,7 @@ export const useFinalizedVote = ({ userId, competitionId }) => {
         .eq('competition_id', competitionId)
         .eq('finalized', true)
         .single();
-
+      console.log('db called for finalized vote');
       if (error && error.code !== 'PGRST116') throw new Error(error.message);
       return data;
     },

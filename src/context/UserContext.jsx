@@ -36,6 +36,7 @@ export const UserProvider = ({ children }) => {
     localStorage.removeItem(LOCAL_STORAGE_KEY);
     setUser(null);
     queryClient.removeQueries({ queryKey: ['performances'] });
+    queryClient.removeQueries({ queryKey: ['finalized-vote'] });
   };
 
   const isRole = (competitionId, roleKey) => {

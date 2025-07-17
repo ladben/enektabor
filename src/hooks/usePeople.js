@@ -16,8 +16,10 @@ export const usePeople = (competitionId) => {
         a.people.name.localeCompare(b.people.name)
       );
     },
-    refetchOnMount: false,
+    refetchOnMount: true,
     refetchOnWindowFocus: false,
-    staleTime: 1000 * 60 * 60 //1 hour
+    refetchOnReconnect: false,
+    staleTime: 0,
+    cacheTime: 0,
   });
 };
