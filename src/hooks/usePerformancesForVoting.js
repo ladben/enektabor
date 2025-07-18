@@ -16,8 +16,10 @@ export const usePerformancesForVoting = (competitionId, excludePerformerId) => {
       return data;
     },
     enabled: !!competitionId && !! excludePerformerId,
-    staleTime: 1000 * 60 * 5,
-    refetchOnMount: false,
+    refetchOnMount: true,
     refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    staleTime: 0,
+    cacheTime: 0,
   });
 };

@@ -11,7 +11,7 @@ export const usePeople = (competitionId) => {
         .eq('competition_id', competitionId);
       console.log('db called for people');
       if (error) throw new Error(error.message);
-
+      console.log('db called for people, returned: ', data);
       return [...data].sort((a, b) =>
         a.people.name.localeCompare(b.people.name)
       );
