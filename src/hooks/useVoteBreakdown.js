@@ -9,7 +9,7 @@ export const useVoteBreakdown = (competitionId) => {
         .rpc('get_vote_breakdown', { p_competition_id: competitionId});
 
       if (error) throw error;
-
+      console.log('rpc callsed with compid: ', competitionId);
       return data;
     },
     enabled: !!competitionId,

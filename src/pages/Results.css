@@ -1,0 +1,10 @@
+.result-dots .dot {
+  width: 10px;
+  height: 10px;
+  background: var(--color-grey);
+  border-radius: 50%;
+}
+
+.result-dots .dot.active {
+  background-color: var(--color-accent);
+}

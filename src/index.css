@@ -312,6 +312,11 @@ h2 {
 
 /* BORDERS */
 
+.border-sm {
+  border-width: 1px;
+  border-style: solid;
+}
+
 .border-md {
   border-width: 3px;
   border-style: solid;
