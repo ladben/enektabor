@@ -13,7 +13,7 @@ const MainLayout = () => {
   };
 
   return (
-    <div className='flex flex-column h-100v of-hidden'>
+    <div className='flex flex-column h-100sv of-hidden'>
       <div className='head-image flex px-50 flex-justify-center flex-align-center elevation-section-shadow'>
         <img src='/header_img.png' alt="" className='w-100' onClick={handleImageClick} />
       </div>

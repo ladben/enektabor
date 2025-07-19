@@ -173,15 +173,17 @@ const Results = () => {
         ))}
       </Swiper>
 
-      <div className="result-dots flex flex-row w-100 flex-justify-center gap-16">
-        {[0, ...miscData].map((e, i) => (
-          <div
-            key={i}
-            onClick={() => goToSlide(i)}
-            className={`dot ${activeIndex === i ? 'active' : ''}`}
-          />
-        ))}
-      </div>
+      {miscData.length > 0 && (
+        <div className="result-dots flex flex-row w-100 flex-justify-center gap-16">
+          {[0, ...miscData].map((e, i) => (
+            <div
+              key={i}
+              onClick={() => goToSlide(i)}
+              className={`dot ${activeIndex === i ? 'active' : ''}`}
+            />
+          ))}
+        </div>
+      )}
     </>
   );
 }

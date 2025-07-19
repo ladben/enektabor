@@ -298,6 +298,10 @@ h2 {
   height: 100dvh;
 }
 
+.h-100sv {
+  height: 100svh;
+}
+
 .w-max-content {
   width: max-content;
 }
