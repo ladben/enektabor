@@ -10,6 +10,7 @@ import App from './App.jsx'
 import { ItemProvider } from './context/ItemContext.jsx';
 import { ThemeProvider } from './context/ThemeContext.jsx';
 import { UserProvider } from './context/UserContext.jsx';
+import { ProfileDisplayProvider } from './context/ProfileDisplayContext.jsx';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -48,7 +49,9 @@ createRoot(document.getElementById('root')).render(
       <ItemProvider>
         <ThemeProvider>
           <UserProvider>
-            <App />
+            <ProfileDisplayProvider>
+              <App />
+            </ProfileDisplayProvider>
           </UserProvider>
         </ThemeProvider>
       </ItemProvider>

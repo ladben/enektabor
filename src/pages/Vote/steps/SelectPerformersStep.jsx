@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
-import { Avatar, Button, GridFlow, Title } from "../../../components";
+import { Avatar, Button, GridFlow, Title, ProfileDisplayFlip } from "../../../components";
+import { useProfileDisplay } from "../../../context/ProfileDisplayContext";
 
 const SelectPerformersStep = ({ performances, max, selected, onConfirm }) => {
   const [selectedIds, setSelectedIds] = useState([]);
+  const { profileDisplay } = useProfileDisplay();
 
   useEffect(() => {
     setSelectedIds(selected);
@@ -26,6 +28,12 @@ const SelectPerformersStep = ({ performances, max, selected, onConfirm }) => {
     <>
       <Title text={`Szavazz az első ${max} helyezettre`} />
       <GridFlow>
+        <div
+          style={{maxWidth: 'calc((100% - 30px) / 4)'}}
+          className="w-100 ar-square"
+        >
+          <ProfileDisplayFlip />
+        </div>
         {performances.map((p) => (
           <div
             key={p.id}
@@ -45,6 +53,7 @@ const SelectPerformersStep = ({ performances, max, selected, onConfirm }) => {
                   ? 'faded'
                   : 'default'
               }
+              display={profileDisplay.icon}
             />
           </div>
         ))}

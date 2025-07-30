@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
-import { Title, Subtitle, Avatar, Button, GridFlow } from "../../../components";
+import { Title, Subtitle, Avatar, Button, GridFlow, ProfileDisplayFlip } from "../../../components";
+import { useProfileDisplay } from "../../../context/ProfileDisplayContext";
 
 const VoteMiscStep = ({ category, performances, selected, onSelect, onConfirm, onBack }) => {
   const [currentSelection, setCurrentSelection] = useState(selected);
+  const { profileDisplay } = useProfileDisplay();
 
   useEffect(() => {
     setCurrentSelection(selected);
@@ -20,6 +22,12 @@ const VoteMiscStep = ({ category, performances, selected, onSelect, onConfirm, o
         <Subtitle text={category.question} />
       </div>
       <GridFlow noPadding>
+        <div
+          style={{maxWidth: 'calc((100% - 30px) / 4)'}}
+          className="w-100 ar-square"
+        >
+          <ProfileDisplayFlip />
+        </div>
         {performances.map((p) => (
           <div
             key={p.id}
@@ -37,6 +45,7 @@ const VoteMiscStep = ({ category, performances, selected, onSelect, onConfirm, o
                   ? 'selected'
                   : 'faded'
               }
+              display={profileDisplay.icon}
             />
           </div>
         ))}

@@ -1,4 +1,5 @@
 export { default as Button} from './controls/buttons/Button/Button';
+export { default as ProfileDisplayFlip } from './controls/buttons/ProfileDisplayFlip/ProfileDisplayFlip';
 
 export { default as TextInput } from './inputs/TextInput/TextInput';
 

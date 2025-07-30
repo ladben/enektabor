@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { useUser } from "../../context/UserContext";
 import { usePeople } from "../../hooks/usePeople";
-import { Avatar, Button, GridFlow, Title } from "../../components";
+import { useProfileDisplay } from "../../context/ProfileDisplayContext";
+import { Avatar, Button, GridFlow, Title, ProfileDisplayFlip} from "../../components";
 
 const SelectUserStep = ({ competition }) => {
   const { data: users = [] } = usePeople(competition.id);
   const [selectedId, setSelectedId] = useState(null);
   const { loginAsUser } = useUser();
+  const { profileDisplay } = useProfileDisplay();
 
   const handleContinue = () => {
     const selected = users.find((u) => u.user_id === selectedId);
@@ -28,6 +30,12 @@ const SelectUserStep = ({ competition }) => {
     <>
       <Title text="Ki vagy?" />
       <GridFlow>
+        <div
+          style={{maxWidth: 'calc((100% - 30px) / 4)'}}
+          className="w-100 ar-square"
+        >
+          <ProfileDisplayFlip />
+        </div>
         {users.map((u) => (
           <div
             key={u.user_id}
@@ -39,6 +47,7 @@ const SelectUserStep = ({ competition }) => {
               imgSrc={u.people.avatar}
               imgName={u.people.name}
               state={!selectedId ? 'default' : selectedId === u.user_id ? 'selected' : 'faded'}
+              display={profileDisplay.icon}
             />
           </div>
         ))}
