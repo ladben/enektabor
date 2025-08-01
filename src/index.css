@@ -350,6 +350,10 @@ h2 {
   border-radius: 32px;
 }
 
+.b-radius-40-perc {
+  border-radius: 40%;
+}
+
 /* OVERFLOW */
 
 .of-hidden {
