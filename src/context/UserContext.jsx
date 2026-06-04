@@ -1,5 +1,5 @@
-import { useQueryClient } from "@tanstack/react-query";
-import { createContext, useContext, useEffect, useState } from "react";
+import { useQueryClient } from '@tanstack/react-query';
+import { createContext, useContext, useEffect, useState } from 'react';
 
 const UserContext = createContext();
 
@@ -7,7 +7,18 @@ const LOCAL_STORAGE_KEY = 'user_login';
 const SESSION_DURATION_MS = 1000 * 60 * 60 * 12; // 12 hours
 
 export const UserProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (!parsed.exp || parsed.exp > Date.now()) {
+        return parsed;
+      } else {
+        localStorage.removeItem(LOCAL_STORAGE_KEY); //expired
+      }
+    }
+    return null;
+  });
   const queryClient = useQueryClient();
 
   // Load user from localStorage
@@ -41,7 +52,7 @@ export const UserProvider = ({ children }) => {
 
   const isRole = (competitionId, roleKey) => {
     return user?.roles?.some(
-      (r) => r.competition.id === competitionId && r[roleKey]
+      (r) => r.competition.id === competitionId && r[roleKey],
     );
   };
 

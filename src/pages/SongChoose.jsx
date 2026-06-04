@@ -1,10 +1,10 @@
 import React from 'react';
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useUser } from "../context/UserContext";
-import { usePerformancesForPerformer } from "../hooks/usePerformancesForPerformer";
-import { Title, Button, Box } from "../components";
-import { supabase } from "../lib/supabaseClient";
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useUser } from '../context/UserContext';
+import { usePerformancesForPerformer } from '../hooks/usePerformancesForPerformer';
+import { Title, Button, Box } from '../components';
+import { supabase } from '../lib/supabaseClient';
 
 import { motion } from 'framer-motion';
 // eslint disable-next-line no-unused-expressions
@@ -13,22 +13,25 @@ import { listVariants, boxVariants } from '../animations/variants';
 
 const SongChoose = () => {
   const { user } = useUser();
-  const { data: performances = [] } = usePerformancesForPerformer(user?.user_id, user?.competition_id);
+  const { data: performances = [] } = usePerformancesForPerformer(
+    user?.user_id,
+    user?.competition_id,
+  );
   const [selectedPerformanceId, setSelectedPerformanceId] = useState(null);
   const [animateNow, setAnimateNow] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
     if (performances && selectedPerformanceId === null) {
-      const preselected = performances.find(p => p.selected);
+      const preselected = performances.find((p) => p.selected);
       if (preselected) setSelectedPerformanceId(preselected.id);
     }
-  },[performances, selectedPerformanceId, setSelectedPerformanceId]);
+  }, [performances, selectedPerformanceId, setSelectedPerformanceId]);
 
   useEffect(() => {
     const timeout = setTimeout(() => setAnimateNow(true), 500);
     return () => clearTimeout(timeout);
-  },[]);
+  }, []);
 
   if (!user) return null;
 
@@ -42,7 +45,7 @@ const SongChoose = () => {
       return;
     }
 
-    navigate('/vote');
+    navigate('/wait-room');
   };
 
   return (
@@ -54,14 +57,14 @@ const SongChoose = () => {
         pos-rel
       `}
     >
-      <Title text="Melyik dalt választottad?" />
+      <Title text='Melyik dalt választottad?' />
       <motion.div
         className='w-100 flex flex-column gap-32 h-100'
         variants={listVariants}
-        initial="initial"
+        initial='initial'
         animate={animateNow ? 'animate' : 'initial'}
       >
-        {performances.map(perf => (
+        {performances.map((perf) => (
           <motion.div
             key={perf.id}
             variants={boxVariants}
@@ -71,22 +74,28 @@ const SongChoose = () => {
               onClick={() => setSelectedPerformanceId(perf.id)}
               artist={perf.songs.artist}
               title={perf.songs.title}
-              state={!selectedPerformanceId ? 'default' : selectedPerformanceId === perf.id ? 'selected' : 'faded'}
+              state={
+                !selectedPerformanceId
+                  ? 'default'
+                  : selectedPerformanceId === perf.id
+                    ? 'selected'
+                    : 'faded'
+              }
             />
           </motion.div>
         ))}
       </motion.div>
       {selectedPerformanceId && (
         <Button
-          text="Folytatás"
+          text='Folytatás'
           iconType='tick'
           onClick={handleContinue}
-          className="pos-abs b-0"
+          className='pos-abs b-0'
           animation='slide-from-bottom'
         />
       )}
     </div>
   );
 };
- 
+
 export default SongChoose;
