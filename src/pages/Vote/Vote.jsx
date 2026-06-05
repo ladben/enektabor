@@ -134,7 +134,15 @@ const Vote = () => {
         <RankPerformersStep
           performances={performances}
           performers={selectedPerformers}
+          rankingEntries={rankingEntries}
           onBack={() => seqRef.current?.slidePrev()}
+          onRankChange={(updatedRankedList) => {
+            const ranking = updatedRankedList.map((p, index) => ({
+              performance_id: p.id,
+              rank: index + 1,
+            }));
+            setRankingEntries(ranking);
+          }}
           onConfirm={handleRankConfirmed}
         />
       </div>
