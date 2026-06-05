@@ -113,6 +113,46 @@ const Vote = () => {
     saveWithExpiry(MISC_KEY, miscVotes);
   }, [selectedPerformers, rankingEntries, miscVotes, userId]);
 
+  useEffect(() => {
+    if (!userId) return;
+
+    // If the user cleared their choices, wipe out the ranking state entries too
+    if (selectedPerformers.length === 0) {
+      setRankingEntries([]);
+      return;
+    }
+
+    setRankingEntries((prevRankings) => {
+      // 1. Strip out any old data objects wrapper if it exists from initial states
+      const flatPrevRankings = Array.isArray(prevRankings) ? prevRankings : [];
+
+      // 2. Remove any entries that are no longer present in selectedPerformers
+      const preservedRankings = flatPrevRankings.filter((entry) =>
+        selectedPerformers.includes(entry.performance_id),
+      );
+
+      // 3. Find newly added performer IDs that don't have a rank yet
+      const existingIds = preservedRankings.map((r) => r.performance_id);
+      const newIds = selectedPerformers.filter(
+        (id) => !existingIds.includes(id),
+      );
+
+      // 4. Map new additions to the end of the ranking list
+      const newEntries = newIds.map((id, index) => ({
+        performance_id: id,
+        rank: preservedRankings.length + index + 1,
+      }));
+
+      const combined = [...preservedRankings, ...newEntries];
+
+      // 5. Re-index ranks strictly sequentially (1, 2, 3...) to avoid numeric gaps
+      return combined.map((entry, idx) => ({
+        ...entry,
+        rank: idx + 1,
+      }));
+    });
+  }, [selectedPerformers, userId]);
+
   if (!user || perfLoading) return <Spinner />;
 
   const handleSlideChange = (swiper) => {
