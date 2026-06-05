@@ -34,7 +34,7 @@
 
 .avatar .flip-card-front.faded,
 .avatar .flip-card-back.faded {
-  filter: brightness(.5);
+  filter: brightness(0.5);
 }
 
 .avatar.tiny {
@@ -52,5 +52,20 @@
 }
 
 .avatar img.no-image-fade {
-  filter: brightness(.5);
+  filter: brightness(0.5);
+}
+
+.avatar.marked::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  aspect-ratio: 1 / 1;
+  background-color: var(--color-background);
+  background-image: url('star.svg');
+  background-size: 12px;
+  background-position: center;
+  background-repeat: no-repeat;
+  border-radius: 50%;
 }
