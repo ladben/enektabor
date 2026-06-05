@@ -63,7 +63,7 @@
   width: 20px;
   aspect-ratio: 1 / 1;
   background-color: var(--color-background);
-  background-image: url('star.svg');
+  background-image: url('/star.svg');
   background-size: 12px;
   background-position: center;
   background-repeat: no-repeat;
