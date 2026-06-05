@@ -17,7 +17,7 @@ const ReviewVoteStep = ({
 
   return (
     <>
-      <div className='flex flex-column'>
+      <div className='flex flex-column flex-align-center w-100'>
         <Title text='Áttekintés' />
         <Subtitle
           text='(koppintással változtathatsz)'

@@ -6,6 +6,7 @@ import { usePerformancesForVoting } from '../../hooks/usePerformancesForVoting';
 import { useMiscCategoriesForCompetition } from '../../hooks/useMiscCategoriesForCompetition';
 import {
   Title,
+  Subtitle,
   GridFlow,
   Avatar,
   ProfileDisplayFlip,
@@ -85,7 +86,10 @@ const WaitRoom = () => {
 
   return (
     <div className='flex flex-column gap-24 flex-align-center w-100 h-100 ofy-hidden pos-rel pb-112'>
-      <Title text='Váróterem' />
+      <div className='flex flex-column flex-align-center w-100'>
+        <Title text='Chill zone' />
+        <Subtitle text='Koppints, és jegyzetelj, amíg el nem kezdődik a szavazás' />
+      </div>
 
       <GridFlow>
         <div
