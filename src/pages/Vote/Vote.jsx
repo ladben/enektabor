@@ -174,6 +174,7 @@ const Vote = () => {
           categories={miscCategories}
           onSubmit={handleVoteSubmit}
           onBack={() => seqRef.current?.slidePrev()}
+          onJumpToStep={(slideIndex) => seqRef.current?.slideTo(slideIndex)}
         />
       </div>
     </Sequence>
