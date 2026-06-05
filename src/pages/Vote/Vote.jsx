@@ -13,8 +13,8 @@ import {
   VoteMiscStep,
 } from './steps';
 
-// 1-hour shelf-life duration setup (matching your user context duration token)
-const SESSION_DURATION_MS = 1000 * 60 * 60 * 1;
+// 12-hour shelf-life duration setup (matching your user context duration token)
+const SESSION_DURATION_MS = 1000 * 60 * 60 * 12;
 
 const Vote = () => {
   const seqRef = useRef();
