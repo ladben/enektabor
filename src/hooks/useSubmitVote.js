@@ -52,7 +52,8 @@ export const useSubmitVote = () => {
       if (miscError) throw new Error(miscError.message);
 
       // 4. Done -> navigate
-      if (user?.is_jury) {
+      const roles = user.roles?.find((r) => r.competition_id === competitionId);
+      if (roles?.is_jury) {
         navigate('/results', { replace: true });
       } else {
         navigate('/thanks', { replace: true });

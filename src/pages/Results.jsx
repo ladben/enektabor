@@ -174,14 +174,13 @@ const Results = () => {
       totalVoters > 0 ? (submittedCount / totalVoters) * 100 : 0;
 
     return (
-      <div className='flex flex-column flex-align-center flex-justify-center gap-24 p-24 text-center h-100 w-100 max-w-400 mx-auto mt-40'>
-        <Title text='Szavazatok Feldolgozása' />
+      <>
+        <div className='flex flex-column flex-align-center w-100'>
+          <Title text='Szavazatok Feldolgozása' />
+          <Subtitle text='Az utolsó leadott szavazat után a táblázat automatikusan feloldódik' />
+        </div>
 
-        <div className='w-100 bg-surface border-sm border-grey b-radius-16 p-24 flex flex-column gap-16 mt-16 shadow-md'>
-          <p className='text-color-text text-md font-medium'>
-            Kérjük várj, az eredmények összegzése élőben frissül!
-          </p>
-
+        <div className='w-100 p-20 b-radius-10 flex flex-column gap-16 elevation-md-blue'>
           {/* Large Neon Numerical Status Indicator */}
           <div
             className='text-color-acc font-bold my-10'
@@ -206,19 +205,8 @@ const Results = () => {
               }}
             />
           </div>
-
-          <p className='text-color-grey text-xs italic mt-8'>
-            Az utolsó leadott szavazat után a táblázat automatikusan feloldódik.
-          </p>
         </div>
-
-        {/* Kept fallback button just in case user network glitches out */}
-        <Button
-          onClick={refetch}
-          text='Kézi frissítés'
-          className='opacity-40 mt-12'
-        />
-      </div>
+      </>
     );
   }
 

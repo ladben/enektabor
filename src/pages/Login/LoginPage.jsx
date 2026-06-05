@@ -39,10 +39,11 @@ const LoginPage = () => {
   };
 
   const handlePostLoginRedirect = () => {
-    if (finalizedVote) return navigate('/thanks');
-
     const targetCompId = competition?.id || user?.competition_id;
     const roles = user.roles?.find((r) => r.competition_id === targetCompId);
+
+    if (finalizedVote && !roles?.is_jury) return navigate('/thanks');
+    if (finalizedVote && roles?.is_jury) return navigate('/results');
 
     const hasVotingStarted = competition?.voting_started;
     if (hasVotingStarted) {
