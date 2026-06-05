@@ -3,25 +3,61 @@ import { useState, useEffect } from 'react';
 import { Button, Title, Subtitle } from '../../components';
 import { useUser } from '../../context/UserContext';
 
+// 12-hour duration shelf-life token matching your user profile lifecycle
+const SESSION_DURATION_MS = 1000 * 60 * 60 * 12;
+
 const PerformerDetailDrawer = ({ performer, categories, onClose }) => {
   const { user } = useUser();
   const [marks, setMarks] = useState({});
 
   const getStorageKey = () => `user_${user?.user_id}_marks_${performer?.id}`;
 
+  // --- 🌟 MOUNT CHECK WITH AUTO-EXPIRY 🌟 ---
   useEffect(() => {
     if (performer && user?.user_id) {
-      const saved = localStorage.getItem(getStorageKey());
-      setMarks(saved ? JSON.parse(saved) : {});
+      const key = getStorageKey();
+      const rawData = localStorage.getItem(key);
+
+      if (rawData) {
+        try {
+          const parsed = JSON.parse(rawData);
+
+          // Verify if it has our timestamp wrapper structure
+          if (parsed && typeof parsed === 'object' && 'exp' in parsed) {
+            if (Date.now() > parsed.exp) {
+              localStorage.removeItem(key); // ❌ 12h passed -> Wipe stale notes
+              console.log(`🧹 Stale performance marks cleared: ${key}`);
+              setMarks({});
+            } else {
+              setMarks(parsed.value); // Fresh data -> Load marks
+            }
+          } else {
+            // Fallback for older legacy records that weren't wrapped yet
+            setMarks(parsed);
+          }
+        } catch (e) {
+          setMarks({});
+        }
+      } else {
+        setMarks({});
+      }
     }
   }, [performer, user]);
 
+  // --- 🌟 SAVE MARKS WITH EXPIRATION TIMESTAMP 🌟 ---
   const toggleMark = (key) => {
     if (!user?.user_id) return;
 
     const newMarks = { ...marks, [key]: !marks[key] };
     setMarks(newMarks);
-    localStorage.setItem(getStorageKey(), JSON.stringify(newMarks));
+
+    // Wrap the value with the 12-hour future expiration point
+    const wrapper = {
+      value: newMarks,
+      exp: Date.now() + SESSION_DURATION_MS,
+    };
+
+    localStorage.setItem(getStorageKey(), JSON.stringify(wrapper));
   };
 
   return (
@@ -80,7 +116,6 @@ const ChecklistItem = ({ label, checked, onToggle, info }) => {
 
   return (
     <div className='flex flex-column gap-10 w-100'>
-      {/* Main Container Row - Now Entirely Clickable */}
       <div
         onClick={onToggle}
         className={`flex flex-row flex-justify-space-between flex-align-center gap-16 w-100 p-12 border-sm b-radius-10 transition-all ${
@@ -103,7 +138,7 @@ const ChecklistItem = ({ label, checked, onToggle, info }) => {
                 : 'text-color-grey border-grey'
             }`}
             onClick={(e) => {
-              e.stopPropagation(); // Stops the box from toggling when clicking '?'
+              e.stopPropagation();
               setShowTooltip(!showTooltip);
             }}
             style={{ touchAction: 'manipulation' }}
@@ -113,7 +148,6 @@ const ChecklistItem = ({ label, checked, onToggle, info }) => {
         )}
       </div>
 
-      {/* Elegant Native Tooltip Expansion */}
       <AnimatePresence>
         {showTooltip && info && (
           <motion.div

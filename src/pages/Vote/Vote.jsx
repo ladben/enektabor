@@ -13,6 +13,9 @@ import {
   VoteMiscStep,
 } from './steps';
 
+// 1-hour shelf-life duration setup (matching your user context duration token)
+const SESSION_DURATION_MS = 1000 * 60 * 60 * 1;
+
 const Vote = () => {
   const seqRef = useRef();
   const { user } = useUser();
@@ -24,27 +27,49 @@ const Vote = () => {
   const RANK_KEY = `user_${userId}_vote_rankings`;
   const MISC_KEY = `user_${userId}_vote_misc`;
   const STEP_KEY = `user_${userId}_vote_step_index`;
-  const SEEN_REVIEW_KEY = `user_${userId}_has_seen_review`; // Scoped seen flag storage key
+  const SEEN_REVIEW_KEY = `user_${userId}_has_seen_review`;
 
-  // --- States ---
+  // --- 🌟 EXPIRATION GUARD HELPER FUNCTION 🌟 ---
+  // Reads item and instantly garbage-collects it if its 12h limit has passed
+  const getInitialValueWithExpiry = (storageKey, defaultValue) => {
+    const rawData = localStorage.getItem(storageKey);
+    if (!rawData) return defaultValue;
+
+    try {
+      const parsed = JSON.parse(rawData);
+
+      // If the record has our timestamp wrapper structure, validate it!
+      if (parsed && typeof parsed === 'object' && 'exp' in parsed) {
+        if (Date.now() > parsed.exp) {
+          localStorage.removeItem(storageKey); // ❌ Expired data found -> Wipe it out!
+          console.log(`🧹 Stale storage wiped cleanly: ${storageKey}`);
+          return defaultValue;
+        }
+        return parsed.value; // Data is fresh, use it!
+      }
+
+      // Fallback for legacy records that don't have an expiration wrapper yet
+      return parsed;
+    } catch (e) {
+      return defaultValue;
+    }
+  };
+
+  // --- States (Using our expiry evaluation helper wrapper) ---
   const [selectedPerformers, setSelectedPerformers] = useState(() => {
-    const saved = localStorage.getItem(SEL_KEY);
-    return saved ? JSON.parse(saved) : [];
+    return getInitialValueWithExpiry(SEL_KEY, []);
   });
 
   const [rankingEntries, setRankingEntries] = useState(() => {
-    const saved = localStorage.getItem(RANK_KEY);
-    return saved ? JSON.parse(saved) : [];
+    return getInitialValueWithExpiry(RANK_KEY, []);
   });
 
   const [miscVotes, setMiscVotes] = useState(() => {
-    const saved = localStorage.getItem(MISC_KEY);
-    return saved ? JSON.parse(saved) : {};
+    return getInitialValueWithExpiry(MISC_KEY, {});
   });
 
-  // Keep track of whether the user has reached the final screen yet
   const [hasSeenReview, setHasSeenReview] = useState(() => {
-    return localStorage.getItem(SEEN_REVIEW_KEY) === 'true';
+    return getInitialValueWithExpiry(SEEN_REVIEW_KEY, false);
   });
 
   const { submitVote } = useSubmitVote();
@@ -55,15 +80,13 @@ const Vote = () => {
   const { data: competition } = useActiveCompetition();
   const topNumber = competition?.top_number;
 
-  // Calculate the total number of steps to know where the final Review screen sits
-  // Step 0: Select, Step 1: Rank, Step 2 to (2 + categories.length - 1): Misc, Final: Review
   const reviewStepIndex = 2 + (miscCategories?.length || 0);
 
-  // Restore Swiper Position on Mount
+  // Restore Swiper Position on Mount with Expiration evaluation built-in
   useEffect(() => {
     if (!perfLoading && seqRef.current) {
-      const savedStep = localStorage.getItem(STEP_KEY);
-      if (savedStep) {
+      const savedStep = getInitialValueWithExpiry(STEP_KEY, null);
+      if (savedStep !== null) {
         setTimeout(() => {
           seqRef.current?.slideTo(parseInt(savedStep, 10), 0);
         }, 100);
@@ -71,24 +94,43 @@ const Vote = () => {
     }
   }, [perfLoading]);
 
-  // Auto-Save Effect
+  // --- 🌟 AUTO-SAVE EFFECT WITH TIMESTAMP PACKAGING 🌟 ---
   useEffect(() => {
     if (!userId) return;
-    localStorage.setItem(SEL_KEY, JSON.stringify(selectedPerformers));
-    localStorage.setItem(RANK_KEY, JSON.stringify(rankingEntries));
-    localStorage.setItem(MISC_KEY, JSON.stringify(miscVotes));
+
+    const expirationTime = Date.now() + SESSION_DURATION_MS;
+
+    const saveWithExpiry = (key, dataValue) => {
+      const wrapper = {
+        value: dataValue,
+        exp: expirationTime,
+      };
+      localStorage.setItem(key, JSON.stringify(wrapper));
+    };
+
+    saveWithExpiry(SEL_KEY, selectedPerformers);
+    saveWithExpiry(RANK_KEY, rankingEntries);
+    saveWithExpiry(MISC_KEY, miscVotes);
   }, [selectedPerformers, rankingEntries, miscVotes, userId]);
 
   if (!user || perfLoading) return <Spinner />;
 
-  // Monitor swiper sliding shifts to catch when they land on the review slide
   const handleSlideChange = (swiper) => {
     if (!userId) return;
-    localStorage.setItem(STEP_KEY, swiper.activeIndex);
+
+    const expirationTime = Date.now() + SESSION_DURATION_MS;
+
+    localStorage.setItem(
+      STEP_KEY,
+      JSON.stringify({ value: swiper.activeIndex, exp: expirationTime }),
+    );
 
     if (swiper.activeIndex === reviewStepIndex) {
       setHasSeenReview(true);
-      localStorage.setItem(SEEN_REVIEW_KEY, 'true');
+      localStorage.setItem(
+        SEEN_REVIEW_KEY,
+        JSON.stringify({ value: true, exp: expirationTime }),
+      );
     }
   };
 
@@ -148,12 +190,12 @@ const Vote = () => {
             }));
             setRankingEntries(ranking);
           }}
-          onConfirm={(rankedList) => seqRef.current?.slideNext()}
+          onConfirm={() => seqRef.current?.slideNext()}
         />
       </div>
 
       {/* Step 3+: Misc Category Voting Loops */}
-      {miscCategories?.map((cat, index) => (
+      {miscCategories?.map((cat) => (
         <div
           key={cat.id}
           className='flex flex-column gap-24 flex-align-center h-100 ofy-hidden w-100'

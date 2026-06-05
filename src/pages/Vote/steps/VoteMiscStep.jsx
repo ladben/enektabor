@@ -27,12 +27,31 @@ const VoteMiscStep = ({
     setCurrentSelection(selected);
   }, [selected]);
 
-  // Helper function checking for the active category ID signature
+  // --- 🌟 UPDATED MISC STORAGE CHECK WITH TIME GUARD EXPIRATION 🌟 ---
   const hasUserMarkedCategory = (performerId) => {
-    const saved = localStorage.getItem(`user_${userId}_marks_${performerId}`);
+    const storageKey = `user_${userId}_marks_${performerId}`;
+    const saved = localStorage.getItem(storageKey);
     if (!saved) return false;
-    const parsed = JSON.parse(saved);
-    return !!parsed[category.id];
+
+    try {
+      const parsed = JSON.parse(saved);
+
+      // Check if the record uses our timed wrapper structure
+      if (parsed && typeof parsed === 'object' && 'exp' in parsed) {
+        // ❌ If the note is older than 12 hours, wipe it out and return false!
+        if (Date.now() > parsed.exp) {
+          localStorage.removeItem(storageKey);
+          return false;
+        }
+        // Fresh data -> look inside the nested 'value' object matching this category ID
+        return !!parsed.value?.[category.id];
+      }
+
+      // Fallback for older legacy records that aren't wrapped yet
+      return !!parsed[category.id];
+    } catch (e) {
+      return false;
+    }
   };
 
   // Dynamically sort the grid matching this specific category context page
@@ -113,7 +132,7 @@ const VoteMiscStep = ({
           <Button
             text='Áttekint'
             onClick={onFastForward}
-            disabled={!currentSelection} // ensures they still have to select a singer before jumping away!
+            disabled={!currentSelection}
             className='bg-acc text-color-bg'
           />
         )}
