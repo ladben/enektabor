@@ -90,7 +90,6 @@ const ReviewVoteStep = ({
       </div>
 
       <div className='flex flex-align-center gap-10'>
-        <Button text='Vissza' onClick={onBack} />
         <Button text='Mehet' onClick={onSubmit} />
       </div>
     </>

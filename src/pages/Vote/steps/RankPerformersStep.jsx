@@ -6,6 +6,8 @@ const RankPerformersStep = ({
   performers,
   performances,
   rankingEntries,
+  hasSeenReview,
+  onFastForward,
   onBack,
   onConfirm,
   onRankChange,
@@ -117,8 +119,22 @@ const RankPerformersStep = ({
       </DragDropContext>
 
       <div className='flex flex-align-center gap-10'>
-        <Button text='Vissza' onClick={onBack} />
-        <Button text='Tovább' onClick={() => onConfirm(ranked)} />
+        {!hasSeenReview && (
+          <>
+            <Button text='Vissza' onClick={onBack} />
+            <Button text='Tovább' onClick={() => onConfirm(ranked)} />
+          </>
+        )}
+        {hasSeenReview && (
+          <>
+            <Button text='Vissza' onClick={onBack} />
+            <Button
+              text='Áttekint'
+              onClick={onFastForward}
+              className='bg-acc text-color-bg' // styled with your neon accent color to look distinct
+            />
+          </>
+        )}
       </div>
     </>
   );

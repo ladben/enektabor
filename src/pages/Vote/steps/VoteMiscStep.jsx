@@ -13,6 +13,8 @@ const VoteMiscStep = ({
   category,
   performances,
   selected,
+  hasSeenReview,
+  onFastForward,
   onSelect,
   onConfirm,
   onBack,
@@ -96,12 +98,25 @@ const VoteMiscStep = ({
       </GridFlow>
 
       <div className='flex flex-align-center gap-10'>
-        <Button text='Vissza' onClick={onBack} />
-        <Button
-          text='Tovább'
-          onClick={onConfirm}
-          disabled={!currentSelection}
-        />
+        {!hasSeenReview && (
+          <>
+            <Button text='Vissza' onClick={onBack} />
+            <Button
+              text='Tovább'
+              onClick={onConfirm}
+              disabled={!currentSelection}
+            />
+          </>
+        )}
+
+        {hasSeenReview && (
+          <Button
+            text='Áttekint'
+            onClick={onFastForward}
+            disabled={!currentSelection} // ensures they still have to select a singer before jumping away!
+            className='bg-acc text-color-bg'
+          />
+        )}
       </div>
     </>
   );
