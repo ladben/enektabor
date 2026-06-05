@@ -1,16 +1,19 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { persistQueryClient } from '@tanstack/react-query-persist-client';
+import { registerSW } from 'virtual:pwa-register';
 import './index.css';
 import 'swiper/css';
 
-import App from './App.jsx'
+import App from './App.jsx';
 
 import { ItemProvider } from './context/ItemContext.jsx';
 import { ThemeProvider } from './context/ThemeContext.jsx';
 import { UserProvider } from './context/UserContext.jsx';
 import { ProfileDisplayProvider } from './context/ProfileDisplayContext.jsx';
+
+registerSW({ immediate: true });
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -57,4 +60,4 @@ createRoot(document.getElementById('root')).render(
       </ItemProvider>
     </QueryClientProvider>
   </StrictMode>,
-)
+);

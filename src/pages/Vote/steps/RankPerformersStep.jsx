@@ -40,8 +40,17 @@ const RankPerformersStep = ({
       });
 
       setRanked(orderedObjects);
+
+      if (
+        orderedObjects.length > 0 &&
+        (!rankingEntries || rankingEntries.length === 0)
+      ) {
+        if (onRankChange) {
+          onRankChange(orderedObjects);
+        }
+      }
     }
-  }, [performers, performances, rankingEntries]); // Listens tightly to ranking changes on mount
+  }, [performers, performances, rankingEntries, onRankChange]); // Listens tightly to ranking changes on mount
 
   const handleDragEnd = (result) => {
     if (!result.destination) return;

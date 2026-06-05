@@ -1,6 +1,9 @@
 const Subtitle = ({ text, style }) => {
   return (
-    <p className='text-color-white' style={style}>
+    <p
+      className='text-color-white'
+      style={{ wordBreak: 'break-word', ...style }}
+    >
       {text}
     </p>
   );

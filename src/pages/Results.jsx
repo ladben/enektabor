@@ -1,20 +1,23 @@
 import './Results.css';
 
-import { useUser } from "../context/UserContext";
-import { useVoteBreakdown } from "../hooks/useVoteBreakdown";
-import { useActiveCompetition } from "../hooks/useActiveCompetition";
-import { usePerformancesForVoting } from "../hooks/usePerformancesForVoting";
-import { useRef, useState } from "react";
-import { Swiper, SwiperSlide } from "swiper/react";
+import { useUser } from '../context/UserContext';
+import { useVoteBreakdown } from '../hooks/useVoteBreakdown';
+import { useActiveCompetition } from '../hooks/useActiveCompetition';
+import { usePerformancesForVoting } from '../hooks/usePerformancesForVoting';
+import { useRef, useState } from 'react';
+import { Swiper, SwiperSlide } from 'swiper/react';
 import 'swiper/css';
-import { Title, Button, Subtitle, Standing } from "../components";
+import { Title, Button, Subtitle, Standing } from '../components';
 
 const Results = () => {
   const { user } = useUser();
   const { data: competition } = useActiveCompetition();
   const competitionId = user?.competition_id;
   const { data, error, refetch } = useVoteBreakdown(competitionId);
-  const { data: performances = [] } = usePerformancesForVoting(competitionId, -1);
+  const { data: performances = [] } = usePerformancesForVoting(
+    competitionId,
+    -1,
+  );
 
   const [activeIndex, setActiveIndex] = useState(0);
   const swiperRef = useRef(null);
@@ -35,7 +38,7 @@ const Results = () => {
       const rank = parseInt(category_value);
 
       if (!performerMap.has(performance_id)) {
-        const perf = performances.find(p => p.id === performance_id);
+        const perf = performances.find((p) => p.id === performance_id);
         performerMap.set(performance_id, {
           performance_id,
           imgSrc: perf?.people?.avatar || '',
@@ -74,7 +77,7 @@ const Results = () => {
     const groupedByCategory = {};
 
     for (const entry of miscEntries) {
-      if (entry.category_type !== "misc") continue;
+      if (entry.category_type !== 'misc') continue;
 
       const category = entry.category_value;
       const perfId = entry.performance_id;
@@ -87,7 +90,7 @@ const Results = () => {
         };
       }
 
-      const perf = performances.find(p => p.id === perfId);
+      const perf = performances.find((p) => p.id === perfId);
 
       if (perf) {
         groupedByCategory[category].votes.push({
@@ -105,42 +108,47 @@ const Results = () => {
   };
 
   // parse the flat list into categories
-  const rankings = data?.filter((entry) => entry.category_type === "rank");
-  const misc = data?.filter((entry) => entry.category_type === "misc");
+  const rankings = data?.filter((entry) => entry.category_type === 'rank');
+  const misc = data?.filter((entry) => entry.category_type === 'misc');
 
   if (error?.message?.includes('Not all voters have voted yet')) {
     return (
-      <div className="flex flex-column flex-align-center gap-16">
-        <Subtitle text="Még nem szavazott mindenki." />
-        <Button onClick={refetch} text="Újratöltés"/>
+      <div className='flex flex-column flex-align-center gap-16'>
+        <Subtitle text='Még nem szavazott mindenki.' />
+        <Button onClick={refetch} text='Újratöltés' />
       </div>
     );
   }
 
-  if (error) return <Subtitle text={`Hiba: ${error.message}`} />
+  if (error) return <Subtitle text={`Hiba: ${error.message}`} />;
 
-  const rankingsData = breakdownToRankingData(rankings, performances, competition.top_number);
+  const rankingsData = breakdownToRankingData(
+    rankings,
+    performances,
+    competition.top_number,
+  );
   const miscData = breakdownToMiscData(misc, performances);
 
   return (
     <>
       <Swiper
         slidesPerView={1}
-        onSwiper={(swiper) => swiperRef.current = swiper}
+        spaceBetween={32}
+        onSwiper={(swiper) => (swiperRef.current = swiper)}
         onSlideChange={(swiper) => setActiveIndex(swiper.activeIndex)}
         allowTouchMove={true}
-        className="results-swiper w-100"
+        className='results-swiper w-100'
       >
         {/* 1st slide: Rankings table */}
         <SwiperSlide>
-          <div className="w-100 h-100 ofy-hidden flex flex-column gap-24">
-            <Title text="Helyezettek" />
-            <div className="h-100 ofy-auto">
-              <div className="flex flex-column gap-10">
+          <div className='w-100 h-100 ofy-hidden ofx-hidden flex flex-column gap-24'>
+            <Title text='Helyezettek' />
+            <div className='h-100 ofy-auto'>
+              <div className='flex flex-column gap-10'>
                 {rankingsData.map((standing, index) => (
                   <Standing
                     key={index}
-                    avatar={{imgSrc: standing.imgSrc, imgName: standing.name}}
+                    avatar={{ imgSrc: standing.imgSrc, imgName: standing.name }}
                     name={standing.name}
                     score={standing.score}
                     rankings={standing.rankings}
@@ -154,14 +162,14 @@ const Results = () => {
         {/* 2+ slide: misc categories */}
         {miscData.map((category, index) => (
           <SwiperSlide key={index}>
-            <div className="w-100 h-100 ofy-hidden flex flex-column gap-24">
+            <div className='w-100 h-100 ofy-hidden ofx-hidden flex flex-column gap-24'>
               <Title text={category.category} />
-              <div className="h-100 ofy-auto">
-                <div className="flex flex-column gap-24">
+              <div className='h-100 ofy-auto'>
+                <div className='flex flex-column gap-24'>
                   {category.votes.map((vote, index) => (
                     <Standing
                       key={index}
-                      avatar={{imgSrc: vote.imgSrc, imgName: vote.name}}
+                      avatar={{ imgSrc: vote.imgSrc, imgName: vote.name }}
                       name={vote.name}
                       score={vote.score}
                     />
@@ -174,7 +182,7 @@ const Results = () => {
       </Swiper>
 
       {miscData.length > 0 && (
-        <div className="result-dots flex flex-row w-100 flex-justify-center gap-16">
+        <div className='result-dots flex flex-row w-100 flex-justify-center gap-16'>
           {[0, ...miscData].map((e, i) => (
             <div
               key={i}
@@ -186,6 +194,6 @@ const Results = () => {
       )}
     </>
   );
-}
- 
+};
+
 export default Results;
