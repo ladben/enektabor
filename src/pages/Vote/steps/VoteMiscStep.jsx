@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import {
   Title,
   Subtitle,
@@ -25,13 +25,30 @@ const VoteMiscStep = ({
     setCurrentSelection(selected);
   }, [selected]);
 
-  // Read helper targeted specifically to this step's active category entry ID
+  // Helper function checking for the active category ID signature
   const hasUserMarkedCategory = (performerId) => {
     const saved = localStorage.getItem(`user_${userId}_marks_${performerId}`);
     if (!saved) return false;
     const parsed = JSON.parse(saved);
     return !!parsed[category.id];
   };
+
+  // Dynamically sort the grid matching this specific category context page
+  const sortedPerformances = useMemo(() => {
+    return [...performances].sort((a, b) => {
+      const markedA = hasUserMarkedCategory(a.id) ? 1 : 0;
+      const markedB = hasUserMarkedCategory(b.id) ? 1 : 0;
+
+      if (markedB !== markedA) {
+        return markedB - markedA;
+      }
+
+      // Secondary alphabetical fallback
+      const nameA = a.people?.name || '';
+      const nameB = b.people?.name || '';
+      return nameA.localeCompare(nameB, 'hu');
+    });
+  }, [performances, category.id, userId]);
 
   const handleClick = (id) => {
     setCurrentSelection(id);
@@ -51,7 +68,7 @@ const VoteMiscStep = ({
         >
           <ProfileDisplayFlip />
         </div>
-        {performances.map((p) => {
+        {sortedPerformances.map((p) => {
           const isMarkedInNotes = hasUserMarkedCategory(p.id);
           return (
             <div

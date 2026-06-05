@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Avatar,
   Button,
@@ -26,13 +26,30 @@ const SelectPerformersStep = ({
     setSelectedIds(selected);
   }, [selected]);
 
-  // Quick read helper function to check pre-saved user notes
+  // Helper function to check notes
   const hasUserMarked = (performerId) => {
     const saved = localStorage.getItem(`user_${userId}_marks_${performerId}`);
     if (!saved) return false;
     const parsed = JSON.parse(saved);
-    return !!parsed['toplist']; // Looking specifically for toplist marks on this step
+    return !!parsed['toplist'];
   };
+
+  // Sort the performers so marked ones bubble to the top
+  const sortedPerformances = useMemo(() => {
+    return [...performances].sort((a, b) => {
+      const markedA = hasUserMarked(a.id) ? 1 : 0;
+      const markedB = hasUserMarked(b.id) ? 1 : 0;
+
+      if (markedB !== markedA) {
+        return markedB - markedA; // Marked (1) comes before unmarked (0)
+      }
+
+      // Secondary fallback: Alphabetical sorting
+      const nameA = a.people?.name || '';
+      const nameB = b.people?.name || '';
+      return nameA.localeCompare(nameB, 'hu');
+    });
+  }, [performances, userId]);
 
   const toggleSelection = (id) => {
     setSelectedIds((prev) => {
@@ -57,7 +74,7 @@ const SelectPerformersStep = ({
           >
             <ProfileDisplayFlip />
           </div>
-          {performances.map((p) => {
+          {sortedPerformances.map((p) => {
             const isMarkedInNotes = hasUserMarked(p.id);
             return (
               <div
@@ -85,29 +102,6 @@ const SelectPerformersStep = ({
             );
           })}
         </GridFlow>
-
-        {miscCategories.length > 0 && (
-          <div className='w-100 flex flex-column gap-16 mt-24 text-left px-16'>
-            <p
-              className='text-color-text text-h2'
-              style={{ textAlign: 'left' }}
-            >
-              A következő oldalakon ezekben a kategóriákban szavazhatsz egy-egy
-              előadóra:
-            </p>
-            <div className='flex flex-column gap-10 w-100'>
-              {miscCategories.map((cat) => (
-                <div
-                  key={cat.id}
-                  className='w-100 p-12 border-sm border-grey b-radius-10 text-color-white text-sm'
-                  style={{ textAlign: 'left' }}
-                >
-                  ✨ <strong className='text-color-acc'>{cat.name}</strong>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       {canConfirm && (
