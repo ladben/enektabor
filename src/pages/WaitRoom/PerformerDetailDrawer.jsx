@@ -1,21 +1,27 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { Button, Title, Subtitle } from '../../components';
+import { useUser } from '../../context/UserContext';
 
 const PerformerDetailDrawer = ({ performer, categories, onClose }) => {
+  const { user } = useUser();
   const [marks, setMarks] = useState({});
 
+  const getStorageKey = () => `user_${user?.user_id}_marks_${performer?.id}`;
+
   useEffect(() => {
-    if (performer) {
-      const saved = localStorage.getItem(`marks_${performer.id}`);
+    if (performer && user?.user_id) {
+      const saved = localStorage.getItem(getStorageKey());
       setMarks(saved ? JSON.parse(saved) : {});
     }
-  }, [performer]);
+  }, [performer, user]);
 
   const toggleMark = (key) => {
+    if (!user?.user_id) return;
+
     const newMarks = { ...marks, [key]: !marks[key] };
     setMarks(newMarks);
-    localStorage.setItem(`marks_${performer.id}`, JSON.stringify(newMarks));
+    localStorage.setItem(getStorageKey(), JSON.stringify(newMarks));
   };
 
   return (
