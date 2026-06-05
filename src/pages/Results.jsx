@@ -31,18 +31,19 @@ const Results = () => {
   const fetchProgressCounters = async () => {
     if (!competitionId) return;
     try {
-      // 1. Count how many total users are flagged as active voters in this competition
+      // 1. Count total eligible voters from your competition_participants table
       const { count: voters, error: err1 } = await supabase
-        .from('user_roles') // Change table name here if your schema flags roles elsewhere
+        .from('competition_participants') // 🌟 Targets your actual participants matrix table
         .select('*', { count: 'exact', head: true })
         .eq('competition_id', competitionId)
         .eq('is_voter', true);
 
-      // 2. Count how many physical ballot keys exist inside your finalized submission ledger
+      // 2. Count rows in the 'votes' table where competition_id matches AND finalized is true
       const { count: submittals, error: err2 } = await supabase
-        .from('finalized_votes') // Matches your final voting submission table schema
+        .from('votes')
         .select('*', { count: 'exact', head: true })
-        .eq('competition_id', competitionId);
+        .eq('competition_id', competitionId)
+        .eq('finalized', true);
 
       if (!err1 && !err2) {
         setTotalVoters(voters || 0);
@@ -53,36 +54,26 @@ const Results = () => {
     }
   };
 
-  // Listen to live WebSocket events when the voting block is actively waiting for results
+  // Realtime subscription adjustment
   useEffect(() => {
     if (!competitionId) return;
 
-    // Load initial numbers straight away on mount
     fetchProgressCounters();
 
-    // Spawn the channel listening for insertions or deletions on your submission board
+    // Listen to changes directly on your 'votes' table
     const resultsChannel = supabase
       .channel(`live_progress_tracker_${competitionId}`)
       .on(
         'postgres_changes',
         {
-          event: '*', // Triggers on insert or delete updates
+          event: '*',
           schema: 'public',
-          table: 'finalized_votes',
+          table: 'votes', // Changed from finalized_votes to votes
           filter: `competition_id=eq.${competitionId}`,
         },
-        async (payload) => {
-          // A voter clicked finalized! Update live totals tracking metrics
+        async () => {
           await fetchProgressCounters();
-
-          // Force TanStack Query / Hook refetch to see if the database calculation can resolve yet
-          const updatedResult = await refetch();
-
-          // Edge-case catch: If numbers match up exactly but the query needs a split-second delay,
-          // passing a manual fallback bypass ensures the UI transitions immediately.
-          if (updatedResult?.data && !updatedResult?.error) {
-            // Charts will render automatically once state shifts
-          }
+          await refetch();
         },
       )
       .subscribe();
