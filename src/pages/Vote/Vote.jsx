@@ -201,38 +201,42 @@ const Vote = () => {
   return (
     <Sequence ref={seqRef} onSlideChange={handleSlideChange}>
       {/* Step 1: Select top performers */}
-      <div className='flex flex-column gap-24 flex-align-center h-100 ofy-hidden w-100'>
-        <SelectPerformersStep
-          performances={performances}
-          max={topNumber}
-          selected={selectedPerformers}
-          onConfirm={(ids) => {
-            setSelectedPerformers(ids);
-            seqRef.current?.slideNext();
-          }}
-          userId={userId}
-        />
-      </div>
+      {topNumber > 0 && (
+        <div className='flex flex-column gap-24 flex-align-center h-100 ofy-hidden w-100'>
+          <SelectPerformersStep
+            performances={performances}
+            max={topNumber}
+            selected={selectedPerformers}
+            onConfirm={(ids) => {
+              setSelectedPerformers(ids);
+              seqRef.current?.slideNext();
+            }}
+            userId={userId}
+          />
+        </div>
+      )}
 
       {/* Step 2: Rank Selected Performers */}
-      <div className='flex flex-column gap-24 flex-align-center h-100 ofy-hidden w-100'>
-        <RankPerformersStep
-          performances={performances}
-          performers={selectedPerformers}
-          rankingEntries={rankingEntries}
-          hasSeenReview={hasSeenReview}
-          onFastForward={handleFastForwardToReview}
-          onBack={() => seqRef.current?.slidePrev()}
-          onRankChange={(updatedRankedList) => {
-            const ranking = updatedRankedList.map((p, index) => ({
-              performance_id: p.id,
-              rank: index + 1,
-            }));
-            setRankingEntries(ranking);
-          }}
-          onConfirm={() => seqRef.current?.slideNext()}
-        />
-      </div>
+      {topNumber > 0 && (
+        <div className='flex flex-column gap-24 flex-align-center h-100 ofy-hidden w-100'>
+          <RankPerformersStep
+            performances={performances}
+            performers={selectedPerformers}
+            rankingEntries={rankingEntries}
+            hasSeenReview={hasSeenReview}
+            onFastForward={handleFastForwardToReview}
+            onBack={() => seqRef.current?.slidePrev()}
+            onRankChange={(updatedRankedList) => {
+              const ranking = updatedRankedList.map((p, index) => ({
+                performance_id: p.id,
+                rank: index + 1,
+              }));
+              setRankingEntries(ranking);
+            }}
+            onConfirm={() => seqRef.current?.slideNext()}
+          />
+        </div>
+      )}
 
       {/* Step 3+: Misc Category Voting Loops */}
       {miscCategories?.map((cat) => (

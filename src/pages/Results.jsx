@@ -23,7 +23,7 @@ const Results = () => {
   const [activeIndex, setActiveIndex] = useState(0);
   const swiperRef = useRef(null);
 
-  // --- 🌟 REAL-TIME PROGRESS COUNTER STATE 🌟 ---
+  // --- Real-time Progress Counter State ---
   const [totalVoters, setTotalVoters] = useState(0);
   const [submittedCount, setSubmittedCount] = useState(0);
 
@@ -31,9 +31,9 @@ const Results = () => {
   const fetchProgressCounters = async () => {
     if (!competitionId) return;
     try {
-      // 1. Count total eligible voters from your competition_participants table
+      // 1. Count total eligible voters from competition_participants table
       const { count: voters, error: err1 } = await supabase
-        .from('competition_participants') // 🌟 Targets your actual participants matrix table
+        .from('competition_participants')
         .select('*', { count: 'exact', head: true })
         .eq('competition_id', competitionId)
         .eq('is_voter', true);
@@ -60,7 +60,7 @@ const Results = () => {
 
     fetchProgressCounters();
 
-    // Listen to changes directly on your 'votes' table
+    // Listen to changes directly on 'votes' table
     const resultsChannel = supabase
       .channel(`live_progress_tracker_${competitionId}`)
       .on(
@@ -68,7 +68,7 @@ const Results = () => {
         {
           event: '*',
           schema: 'public',
-          table: 'votes', // Changed from finalized_votes to votes
+          table: 'votes',
           filter: `competition_id=eq.${competitionId}`,
         },
         async () => {
@@ -168,7 +168,7 @@ const Results = () => {
     return Object.values(groupedByCategory);
   };
 
-  // --- 🌟 DYNAMIC REAL-TIME WAITING SCREEN BRANCH 🌟 ---
+  // --- DYNAMIC REAL-TIME WAITING SCREEN BRANCH ---
   if (error?.message?.includes('Not all voters have voted yet')) {
     const progressPct =
       totalVoters > 0 ? (submittedCount / totalVoters) * 100 : 0;
@@ -219,9 +219,12 @@ const Results = () => {
   const rankingsData = breakdownToRankingData(
     rankings,
     performances,
-    competition.top_number,
+    competition?.top_number,
   );
   const miscData = breakdownToMiscData(misc, performances);
+
+  // Check if a toplista calculation is active for this gala
+  const hasToplist = competition?.top_number > 0;
 
   return (
     <>
@@ -233,25 +236,30 @@ const Results = () => {
         allowTouchMove={true}
         className='results-swiper w-100'
       >
-        {/* 1st slide: Rankings table */}
-        <SwiperSlide>
-          <div className='w-100 h-100 ofy-hidden ofx-hidden flex flex-column gap-24'>
-            <Title text='Helyezettek' />
-            <div className='h-100 ofy-auto'>
-              <div className='flex flex-column gap-10'>
-                {rankingsData.map((standing, index) => (
-                  <Standing
-                    key={index}
-                    avatar={{ imgSrc: standing.imgSrc, imgName: standing.name }}
-                    name={standing.name}
-                    score={standing.score}
-                    rankings={standing.rankings}
-                  />
-                ))}
+        {/* 1st slide: Rankings table - ONLY IF TOPLIST IS ENABLED */}
+        {hasToplist && (
+          <SwiperSlide>
+            <div className='w-100 h-100 ofy-hidden ofx-hidden flex flex-column gap-24'>
+              <Title text='Helyezettek' />
+              <div className='h-100 ofy-auto'>
+                <div className='flex flex-column gap-10'>
+                  {rankingsData.map((standing, index) => (
+                    <Standing
+                      key={index}
+                      avatar={{
+                        imgSrc: standing.imgSrc,
+                        imgName: standing.name,
+                      }}
+                      name={standing.name}
+                      score={standing.score}
+                      rankings={standing.rankings}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
-        </SwiperSlide>
+          </SwiperSlide>
+        )}
 
         {/* 2+ slide: misc categories */}
         {miscData.map((category, index) => (
@@ -275,9 +283,10 @@ const Results = () => {
         ))}
       </Swiper>
 
+      {/* Adjust visual paging indicator markers matching layout sizes */}
       {miscData.length > 0 && (
         <div className='result-dots flex flex-row w-100 flex-justify-center gap-16'>
-          {[0, ...miscData].map((e, i) => (
+          {(hasToplist ? [0, ...miscData] : miscData).map((e, i) => (
             <div
               key={i}
               onClick={() => goToSlide(i)}

@@ -12,8 +12,11 @@ const ReviewVoteStep = ({
 }) => {
   const findPerformance = (id) => performances.find((perf) => perf.id === id);
 
-  // Keep display items sorted beautifully from 1st place downwards
-  const sortedRankings = [...rankings].sort((a, b) => a.rank - b.rank);
+  // 1. Ha a szülő nem küld rangsort (vagy üres), akkor tudjuk, hogy nincs toplista szavazás
+  const hasToplist = rankings && rankings.length > 0;
+  const sortedRankings = hasToplist
+    ? [...rankings].sort((a, b) => a.rank - b.rank)
+    : [];
 
   return (
     <>
@@ -26,43 +29,39 @@ const ReviewVoteStep = ({
       </div>
       <div className='ofy-auto p-16 w-100 h-100'>
         <div className='flex flex-column gap-16'>
-          {/* --- 1. Toplist Rankings Overview Boxes --- */}
-          {sortedRankings.map(({ performance_id, rank }, index) => {
-            const perf = findPerformance(performance_id);
-            return (
-              <React.Fragment key={`rank-${index}`}>
-                <Box
-                  onClick={() => onJumpToStep(1)}
-                  state='selected'
-                  artist={perf?.songs?.artist}
-                  title={perf?.songs?.title}
-                  avatar={{
-                    imgSrc: perf?.people?.avatar,
-                    imgName: perf?.people?.name,
-                  }}
-                  badgeText={`${rank}. hely`}
-                  smallImg={true}
-                  autoHeight={true}
-                  style={{
-                    cursor: 'pointer',
-                    WebkitTapHighlightColor: 'transparent',
-                  }}
-                />
-              </React.Fragment>
-            );
-          })}
+          {/* --- 1. Toplist Rankings - CSAK HA VAN TOPLISTA --- */}
+          {hasToplist &&
+            sortedRankings.map(({ performance_id, rank }, index) => {
+              const perf = findPerformance(performance_id);
+              return (
+                <React.Fragment key={`rank-${index}`}>
+                  <Box
+                    onClick={() => onJumpToStep(1)} // Fixen a rangsoroló diára ugrik
+                    state='selected'
+                    artist={perf?.songs?.artist}
+                    title={perf?.songs?.title}
+                    avatar={{
+                      imgSrc: perf?.people?.avatar,
+                      imgName: perf?.people?.name,
+                    }}
+                    badgeText={`${rank}. hely`}
+                    smallImg={true}
+                    autoHeight={true}
+                  />
+                </React.Fragment>
+              );
+            })}
 
-          {/* --- 2. Miscellaneous Categories Sorted by Slider Sequence --- */}
+          {/* --- 2. Miscellaneous Categories --- */}
           {categories.map((cat, index) => {
-            // Find the chosen performance ID for this specific category
             const performanceId = miscVotes[cat.id];
-
-            // If the user skipped or hasn't voted in this category yet, skip rendering it safely
             if (!performanceId) return null;
 
             const perf = findPerformance(performanceId);
-            // Calculate the exact matching slide position (Step 0 = Selection, Step 1 = Ranking, Categories start at 2)
-            const targetSlidePosition = 2 + index;
+
+            // 🌟 INDEX KISZÁMÍTÁSA: Ha van toplista, akkor a 2. diától kezdődnek (2 + index).
+            // Ha nincs toplista, akkor a legelső dia (0. index) a kategória, azaz simán az index!
+            const targetSlidePosition = hasToplist ? 2 + index : index;
 
             return (
               <React.Fragment key={`misc-${cat.id}`}>
@@ -78,10 +77,6 @@ const ReviewVoteStep = ({
                   badgeText={cat?.name}
                   smallImg={true}
                   autoHeight={true}
-                  style={{
-                    cursor: 'pointer',
-                    WebkitTapHighlightColor: 'transparent',
-                  }}
                 />
               </React.Fragment>
             );
