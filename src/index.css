@@ -71,6 +71,10 @@ h2 {
   color: var(--color-white);
 }
 
+.text-left {
+  text-align: left;
+}
+
 /* BACKGROUNDS */
 .bg-bg {
   background-color: var(--color-background);
@@ -168,6 +172,10 @@ h2 {
 
 .p-4 {
   padding: 4px;
+}
+
+.p-8 {
+  padding: 8px;
 }
 
 .p-12 {

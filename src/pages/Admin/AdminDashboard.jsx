@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { Title, Button, Spinner } from '../../components';
 import bcrypt from 'bcryptjs';
@@ -80,7 +80,7 @@ const AdminDashboard = () => {
       // SZERKESZTÉS MÓD
       setEditingComp(comp);
       setCompName(comp.name);
-      setCompPassword(''); // Biztonsági okokból üresen hagyjuk, csak ha beír újat, akkor hash-eljük
+      setCompPassword(''); // Csak akkor frissítjük, ha beír újat
       setTopNumber(comp.top_number);
 
       // Lekérjük a versenyhez rendelt kategóriákat
@@ -105,7 +105,7 @@ const AdminDashboard = () => {
       setCompCategories([]);
       setCompParticipants([]);
 
-      // 🌟 BULK IMPORT: Legutóbbi aktív verseny résztvevőinek betöltése automatikusan
+      // BULK IMPORT: Legutóbbi aktív verseny résztvevőinek betöltése automatikusan
       const lastActive = competitions.find((c) => c.is_active);
       if (lastActive) {
         const { data: lastParts } = await supabase
@@ -193,7 +193,7 @@ const AdminDashboard = () => {
     }
   };
 
-  // --- Mentés mentési logika (Update & Insert) ---
+  // --- Mentési logika (Update & Insert) ---
   const handleSaveCompetition = async () => {
     setLoading(true);
     let compId = editingComp.id;
@@ -254,6 +254,38 @@ const AdminDashboard = () => {
     fetchCompetitions();
   };
 
+  // 🌟 KATEGÓRIÁK CSOPORTOSÍTOTT ÉS MAGYAR ÁBÉCÉ SZERINTI ÉLŐ RENDEZÉSE
+  const sortedCategories = useMemo(() => {
+    return [...allMiscCategories].sort((a, b) => {
+      const inCompA = compCategories.includes(a.id) ? 1 : 0;
+      const inCompB = compCategories.includes(b.id) ? 1 : 0;
+
+      // 1. Csoportosítás: Amelyik be van jelölve (1), az jön előre
+      if (inCompB !== inCompA) {
+        return inCompB - inCompA;
+      }
+
+      // 2. Csoporton belüli rendezés: Magyar ábécé a kategória neve alapján
+      return a.name.localeCompare(b.name, 'hu');
+    });
+  }, [allMiscCategories, compCategories]);
+
+  // JOGOSULTSÁG ÉS MAGYAR ÁBÉCÉ SZERINTI CSOPORTOSÍTOTT RENDEZÉS (FELHASZNÁLÓK)
+  const sortedPeople = useMemo(() => {
+    return [...allPeople].sort((a, b) => {
+      const inCompA = compParticipants.some((p) => p.user_id === a.id) ? 1 : 0;
+      const inCompB = compParticipants.some((p) => p.user_id === b.id) ? 1 : 0;
+
+      // 1. Csoportosítás: Aki be van válogatva (1), az jön előre
+      if (inCompB !== inCompA) {
+        return inCompB - inCompA;
+      }
+
+      // 2. Csoporton belüli rendezés: Magyar ékezetes ábécé
+      return a.name.localeCompare(b.name, 'hu');
+    });
+  }, [allPeople, compParticipants]);
+
   if (loading) return <Spinner />;
 
   // ==========================================
@@ -269,6 +301,7 @@ const AdminDashboard = () => {
           <Title text='Adminisztrációs Panel' />
           <button
             className='px-16 py-8 bg-acc text-color-bg b-radius-10 font-bold border-none'
+            style={{ cursor: 'pointer' }}
             onClick={() => handleOpenEdit(null)}
           >
             ➕ Új hozzáadása
@@ -309,6 +342,7 @@ const AdminDashboard = () => {
                       width: '20px',
                       height: '20px',
                       accentColor: 'var(--color-text)',
+                      cursor: 'pointer',
                     }}
                   />
                 </td>
@@ -323,12 +357,14 @@ const AdminDashboard = () => {
                       width: '20px',
                       height: '20px',
                       accentColor: 'var(--color-accent)',
+                      cursor: 'pointer',
                     }}
                   />
                 </td>
                 <td className='p-12'>
                   <button
                     className='px-12 py-4 border-sm border-text text-color-text b-radius-5 bg-transparent font-bold'
+                    style={{ cursor: 'pointer' }}
                     onClick={() => handleOpenEdit(comp)}
                   >
                     Módosítás
@@ -364,12 +400,14 @@ const AdminDashboard = () => {
         <div className='flex gap-16'>
           <button
             className='px-16 py-8 border-sm border-grey text-color-grey b-radius-10 bg-transparent font-bold'
+            style={{ cursor: 'pointer' }}
             onClick={() => setEditingComp(null)}
           >
             Mégse
           </button>
           <button
             className='px-16 py-8 bg-text text-color-bg b-radius-10 font-bold border-none'
+            style={{ cursor: 'pointer' }}
             onClick={handleSaveCompetition}
           >
             Mentés
@@ -429,7 +467,8 @@ const AdminDashboard = () => {
               className='flex flex-column gap-10 max-h-300 ofy-auto mb-16 p-4 border-sm border-transparent b-radius-10'
               style={{ borderBottomColor: 'var(--color-grey)' }}
             >
-              {allMiscCategories.map((cat) => (
+              {/* 🌟 Most már a rendezett kategóriák listáját (sortedCategories) mapeljük le */}
+              {sortedCategories.map((cat) => (
                 <label
                   key={cat.id}
                   className='flex flex-row gap-10 flex-align-center p-8 b-radius-5 transition-all hover-bg'
@@ -439,10 +478,15 @@ const AdminDashboard = () => {
                     type='checkbox'
                     checked={compCategories.includes(cat.id)}
                     onChange={() => toggleCategoryInComp(cat.id)}
-                    style={{ width: '18px', height: '18px' }}
+                    style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                   />
                   <div>
-                    <div className='font-bold'>{cat.name}</div>
+                    <div
+                      className='font-bold text-color-white'
+                      style={{ textAlign: 'left' }}
+                    >
+                      {cat.name}
+                    </div>
                     <div className='text-sm text-color-grey'>
                       {cat.question}
                     </div>
@@ -472,6 +516,7 @@ const AdminDashboard = () => {
               />
               <button
                 className='py-8 bg-acc text-color-white font-bold b-radius-5 border-none'
+                style={{ cursor: 'pointer' }}
                 onClick={handleCreateAndAddCategory}
               >
                 Mentés és Hozzáadás a versenyhez
@@ -498,6 +543,7 @@ const AdminDashboard = () => {
             />
             <button
               className='px-16 bg-acc text-color-white font-bold b-radius-10 border-none'
+              style={{ cursor: 'pointer' }}
               onClick={handleCreateAndAddPerson}
             >
               + Felvesz
@@ -508,7 +554,7 @@ const AdminDashboard = () => {
             className='flex flex-column gap-10 ofy-auto pr-4'
             style={{ maxHeight: '600px' }}
           >
-            {allPeople.map((person) => {
+            {sortedPeople.map((person) => {
               const part = compParticipants.find(
                 (p) => p.user_id === person.id,
               );
@@ -520,7 +566,9 @@ const AdminDashboard = () => {
                   className={`flex flex-row flex-justify-space-between flex-align-center p-8 b-radius-10 border-sm transition-all ${inComp ? 'border-text bg-transparent' : 'border-grey opacity-50'}`}
                 >
                   <div className='text-left'>
-                    <div className='font-bold text-lg'>{person.name}</div>
+                    <div className='font-bold text-lg text-left'>
+                      {person.name}
+                    </div>
                     <div className='text-sm text-color-grey'>
                       {inComp
                         ? 'Szelektálva a versenyre'
@@ -533,6 +581,7 @@ const AdminDashboard = () => {
                       <>
                         <button
                           className={`px-8 py-4 text-sm b-radius-5 font-bold border-none ${part.is_voter ? 'bg-text text-color-bg' : 'bg-grey text-color-bg'}`}
+                          style={{ cursor: 'pointer' }}
                           onClick={() =>
                             toggleParticipantRole(person.id, 'is_voter')
                           }
@@ -541,6 +590,7 @@ const AdminDashboard = () => {
                         </button>
                         <button
                           className={`px-8 py-4 text-sm b-radius-5 font-bold border-none ${part.is_jury ? 'bg-text text-color-bg' : 'bg-grey text-color-bg'}`}
+                          style={{ cursor: 'pointer' }}
                           onClick={() =>
                             toggleParticipantRole(person.id, 'is_jury')
                           }
@@ -549,6 +599,7 @@ const AdminDashboard = () => {
                         </button>
                         <button
                           className={`px-8 py-4 text-sm b-radius-5 font-bold border-none ${part.is_performer ? 'bg-text text-color-bg' : 'bg-grey text-color-bg'}`}
+                          style={{ cursor: 'pointer' }}
                           onClick={() =>
                             toggleParticipantRole(person.id, 'is_performer')
                           }
@@ -557,6 +608,7 @@ const AdminDashboard = () => {
                         </button>
                         <button
                           className='px-8 py-4 text-sm bg-acc text-color-white b-radius-5 border-none font-bold ml-10'
+                          style={{ cursor: 'pointer' }}
                           onClick={() => removeParticipant(person.id)}
                         >
                           ✕ Kivág
@@ -565,6 +617,7 @@ const AdminDashboard = () => {
                     ) : (
                       <button
                         className='px-12 py-6 border-sm border-text text-color-text b-radius-5 bg-transparent font-bold'
+                        style={{ cursor: 'pointer' }}
                         onClick={() =>
                           toggleParticipantRole(person.id, 'is_voter')
                         }
