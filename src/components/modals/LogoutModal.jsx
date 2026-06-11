@@ -2,9 +2,7 @@ import './LogoutModal.css';
 
 import ReactDOM from 'react-dom';
 import { motion } from 'framer-motion';
-// eslint disable-next-line no-unused-expressions
-void motion;
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from 'react-router-dom';
 import { useUser } from '../../context/UserContext';
 import { Button } from '../index';
 
@@ -19,11 +17,21 @@ const LogoutModal = ({ onClose }) => {
     }
   };
 
+  // 1. Sima, tiszta kilépés (megőrzi a 12h-s jegyzeteket és egyebeket)
   const handleLogout = () => {
     logout();
     onClose();
-    navigate('/');
-  }
+    navigate('/', { replace: true });
+  };
+
+  // 2. 💥 RADIKÁLIS VISSZAÁLLÍTÁS (Mindent letakarít a localStorage-ból)
+  const handleHardReset = () => {
+    localStorage.clear(); // Teljes nukleáris csapás a domain tárolójára (gyorsítótár + minden törlődik)
+    onClose();
+
+    // Mivel a UserContext belső állapotát is nullázni kell a biztonság kedvéért:
+    window.location.href = '/'; // Kényszerített teljes oldalújratöltés a tiszta memóriáért a loginon
+  };
 
   const modalContent = (
     <motion.div
@@ -44,7 +52,7 @@ const LogoutModal = ({ onClose }) => {
           border-md border-text
           pos-rel
         `}
-        initial={{ opacity: 0, y: 30, scale: 0.95}}
+        initial={{ opacity: 0, y: 30, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 30, scale: 0.95 }}
         transition={{ duration: 0.25, ease: 'easeOut' }}
@@ -53,19 +61,37 @@ const LogoutModal = ({ onClose }) => {
           src='/x-text.svg'
           alt='close modal'
           className='pos-abs t-0 r-0 p-12'
-          style={{width: '50px', height: '50px'}}
+          style={{ width: '50px', height: '50px' }}
           onClick={onClose}
         />
-        <h2>Biztosan ki akarsz lépni?</h2>
-        <Button
-          text="Kilépek"
-          onClick={handleLogout}
-        />
+
+        <h2>Művelet kiválasztása</h2>
+        <p className='text-sm text-color-grey' style={{ marginTop: '-10px' }}>
+          Ha hibás adatokat látsz vagy beragadt a rendszer, használd a
+          visszaállítást.
+        </p>
+
+        {/* Gombok egymás mellett/alatt elrendezve */}
+        <div className='flex flex-column gap-10 flex-align-center w-100 mt-16'>
+          {/* Sima kilépés gomb */}
+          <Button
+            text='Kilépek'
+            onClick={handleLogout}
+            className='w-100 flex-justify-center'
+          />
+
+          {/* 💥 Nukleáris Hard-Reset gomb egyedi stílussal */}
+          <Button
+            text='Visszaállítás'
+            onClick={handleHardReset}
+            className='w-100 flex-justify-center bg-grey text-color-bg border-grey' // Szürke háttérrel, hogy vizuálisan elváljon a fő akciótól
+          />
+        </div>
       </motion.div>
     </motion.div>
   );
 
   return ReactDOM.createPortal(modalContent, modalRoot);
 };
- 
+
 export default LogoutModal;
