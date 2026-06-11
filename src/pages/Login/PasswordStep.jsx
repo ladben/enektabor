@@ -1,23 +1,29 @@
-import { useState } from "react";
-import { useSequenceConfig } from "../../context/SequenceContext";
-import { useActiveCompetition } from "../../hooks/useActiveCompetition";
-import bcrypt from "bcryptjs";
-
-import { Button, TextInput, Title } from "../../components";
+import { useState } from 'react';
+import { useSequenceConfig } from '../../context/SequenceContext';
+import { useActiveCompetition } from '../../hooks/useActiveCompetition';
+import { useNavigate } from 'react-router-dom'; // 🌟 IMPORTÁLJUK
+import bcrypt from 'bcryptjs';
+import { Button, TextInput, Title } from '../../components';
 
 const PasswordStep = ({ onSuccess }) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isPressed, setIsPressed] = useState(false);
   const { BUTTON_PRESSED_TIME, SWIPE_DELAY } = useSequenceConfig();
+  const navigate = useNavigate(); // 🌟 HOZZÁADVA
 
   const { data: competition } = useActiveCompetition();
 
   const handleSubmit = async () => {
     setError('');
     setIsPressed(true);
-
     setTimeout(() => setIsPressed(false), BUTTON_PRESSED_TIME);
+
+    // 🌟 ADMIN IRÁNYÍTÁS: Ha a titkos jelszót írja be
+    if (password === 'adminedit') {
+      setTimeout(() => navigate('/admin'), BUTTON_PRESSED_TIME + SWIPE_DELAY);
+      return;
+    }
 
     if (!competition) {
       setError('No active competitions found');
@@ -35,23 +41,23 @@ const PasswordStep = ({ onSuccess }) => {
 
   return (
     <>
-      <Title text="Írd be a jelszót a folytatáshoz!" />
+      <Title text='Írd be a jelszót a folytatáshoz!' />
       <TextInput
-        name="competition-password"
+        name='competition-password'
         value={password}
         onChange={(e) => setPassword(e.target.value)}
-        placeholder="Jelszó..."
+        placeholder='Jelszó...'
       />
       <Button
-        text="Mehet"
-        iconType="tick"
+        text='Mehet'
+        iconType='tick'
         onClick={handleSubmit}
         isPressed={isPressed}
-        className={"mb-16"}
+        className={'mb-16'}
       />
-      {error && <p className="text-color-acc mt-2">{error}</p>}
+      {error && <p className='text-color-acc mt-2'>{error}</p>}
     </>
   );
-}
- 
+};
+
 export default PasswordStep;

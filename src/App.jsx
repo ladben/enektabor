@@ -10,6 +10,7 @@ import WaitRoom from './pages/WaitRoom/WaitRoom';
 import Vote from './pages/Vote/Vote';
 import Thanks from './pages/Thanks';
 import Results from './pages/Results';
+import AdminDashboard from './pages/Admin/AdminDashboard';
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
           <Route path='/vote' element={<Vote />} />
           <Route path='/thanks' element={<Thanks />} />
           <Route path='/results' element={<Results />} />
+          <Route path='/admin' element={<AdminDashboard />} />
           <Route path='*' element={<NotFound />} />
         </Route>
       </Routes>
