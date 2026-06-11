@@ -22,6 +22,13 @@ const AdminDashboard = () => {
   const [compParticipants, setCompParticipants] = useState([]); // [{user_id, is_voter, is_jury, is_performer}]
   const [newPersonName, setNewPersonName] = useState('');
 
+  // 🌟 Dalok kezeléséhez szükséges új állapotok
+  const [allSongs, setAllSongs] = useState([]); // Globális dalok listája a DB-ből
+  const [performerSongs, setPerformerSongs] = useState({}); // { [user_id]: song_id } - Melyik énekes melyik dalt énekli ezen a versenyen
+  const [newSongArtist, setNewSongArtist] = useState('');
+  const [newSongTitle, setNewSongTitle] = useState('');
+  const [activeSongAddingUserId, setActiveSongAddingUserId] = useState(null); // Melyik felhasználónál van épp nyitva az "Új dal" panel
+
   useEffect(() => {
     fetchCompetitions();
     fetchGlobalData();
@@ -29,7 +36,6 @@ const AdminDashboard = () => {
 
   const fetchCompetitions = async () => {
     setLoading(true);
-    // Lekérjük a versenyeket és összeszámoljuk a résztvevőket
     const { data: comps, error } = await supabase
       .from('competitions')
       .select(`*, competition_participants(count)`)
@@ -40,24 +46,27 @@ const AdminDashboard = () => {
   };
 
   const fetchGlobalData = async () => {
-    // Lekérjük a globális kategóriákat és embereket a DB-ből a hozzáadásokhoz
     const { data: cats } = await supabase.from('misc_categories').select('*');
     const { data: people } = await supabase.from('people').select('*');
+    const { data: songs } = await supabase
+      .from('songs')
+      .select('*')
+      .order('artist', { ascending: true });
+
     setAllMiscCategories(cats || []);
     setAllPeople(people || []);
+    setAllSongs(songs || []);
   };
 
   // --- Verseny státusz kapcsolók (is_active, voting_started) ---
   const handleToggleActive = async (id, currentStatus) => {
-    if (currentStatus) return; // Ha már aktív, ne csináljon semmit
+    if (currentStatus) return;
 
     setLoading(true);
-    // 1. Minden versenyt inaktiválunk
     await supabase
       .from('competitions')
       .update({ is_active: false })
       .neq('id', id);
-    // 2. Aktiváljuk a kiválasztottat
     await supabase
       .from('competitions')
       .update({ is_active: true })
@@ -76,26 +85,39 @@ const AdminDashboard = () => {
 
   // --- Szerkesztés / Új megnyitása ---
   const handleOpenEdit = async (comp) => {
+    setPerformerSongs({});
+    setActiveSongAddingUserId(null);
+
     if (comp) {
       // SZERKESZTÉS MÓD
       setEditingComp(comp);
       setCompName(comp.name);
-      setCompPassword(''); // Csak akkor frissítjük, ha beír újat
+      setCompPassword('');
       setTopNumber(comp.top_number);
 
-      // Lekérjük a versenyhez rendelt kategóriákat
       const { data: cCats } = await supabase
         .from('competition_has_misc_category')
         .select('misc_category_id')
         .eq('competition_id', comp.id);
       setCompCategories(cCats?.map((c) => c.misc_category_id) || []);
 
-      // Lekérjük a versenyhez rendelt résztvevőket
       const { data: cParts } = await supabase
         .from('competition_participants')
         .select('*')
         .eq('competition_id', comp.id);
       setCompParticipants(cParts || []);
+
+      // 🌟 Lekérjük az énekesek meglévő előadásait/dalait ehhez a versenyhez
+      const { data: perfs } = await supabase
+        .from('performances')
+        .select('performer_id, song_id')
+        .eq('competition_id', comp.id);
+
+      const songMapping = {};
+      perfs?.forEach((p) => {
+        songMapping[p.performer_id] = p.song_id;
+      });
+      setPerformerSongs(songMapping);
     } else {
       // ÚJ VERSENY MÓD
       setEditingComp({ id: 'new' });
@@ -114,6 +136,18 @@ const AdminDashboard = () => {
           .eq('competition_id', lastActive.id);
 
         if (lastParts) setCompParticipants(lastParts);
+
+        // 🌟 Bulk import esetén áthozzuk a dalokat is, hátha ugyanazt éneklik (de szabadon módosítható)
+        const { data: lastPerfs } = await supabase
+          .from('performances')
+          .select('performer_id, song_id')
+          .eq('competition_id', lastActive.id);
+
+        const songMapping = {};
+        lastPerfs?.forEach((p) => {
+          songMapping[p.performer_id] = p.song_id;
+        });
+        setPerformerSongs(songMapping);
       }
     }
   };
@@ -168,6 +202,11 @@ const AdminDashboard = () => {
 
   const removeParticipant = (userId) => {
     setCompParticipants((prev) => prev.filter((p) => p.user_id !== userId));
+    setPerformerSongs((prev) => {
+      const copy = { ...prev };
+      delete copy[userId];
+      return copy;
+    });
   };
 
   const handleCreateAndAddPerson = async () => {
@@ -193,6 +232,38 @@ const AdminDashboard = () => {
     }
   };
 
+  // --- 🌟 Dal választás és Új dal beszúrása ---
+  const handleSelectSongForPerformer = (userId, songId) => {
+    setPerformerSongs((prev) => ({
+      ...prev,
+      [userId]: songId ? parseInt(songId, 10) : null,
+    }));
+  };
+
+  const handleCreateAndAddSong = async (userId) => {
+    if (!newSongArtist || !newSongTitle) return;
+
+    const { data, error } = await supabase
+      .from('songs')
+      .insert({ artist: newSongArtist, title: newSongTitle })
+      .select()
+      .single();
+
+    if (!error && data) {
+      setAllSongs((prev) =>
+        [...prev, data].sort((a, b) => a.artist.localeCompare(b.artist, 'hu')),
+      );
+      // Azonnal hozzárendeljük az énekeshez az újonnan kreált dalt
+      setPerformerSongs((prev) => ({
+        ...prev,
+        [userId]: data.id,
+      }));
+      setNewSongArtist('');
+      setNewSongTitle('');
+      setActiveSongAddingUserId(null); // Ablak bezárása
+    }
+  };
+
   // --- Mentési logika (Update & Insert) ---
   const handleSaveCompetition = async () => {
     setLoading(true);
@@ -208,7 +279,6 @@ const AdminDashboard = () => {
     }
 
     if (compId === 'new') {
-      // 1. Új verseny létrehozása
       const { data, error } = await supabase
         .from('competitions')
         .insert(payload)
@@ -217,7 +287,6 @@ const AdminDashboard = () => {
       if (error) return setLoading(false);
       compId = data.id;
     } else {
-      // 2. Meglévő verseny frissítése
       await supabase.from('competitions').update(payload).eq('id', compId);
     }
 
@@ -250,22 +319,36 @@ const AdminDashboard = () => {
       await supabase.from('competition_participants').insert(partInserts);
     }
 
+    // --- 🌟 Performances (Előadások / Dalok) szinkronizálása ---
+    await supabase.from('performances').delete().eq('competition_id', compId);
+
+    const performanceInserts = [];
+    compParticipants.forEach((p) => {
+      // Csak akkor mentünk előadást, ha az illető Performer ÉS választott dalt
+      if (p.is_performer && performerSongs[p.user_id]) {
+        performanceInserts.push({
+          competition_id: compId,
+          performer_id: p.user_id,
+          song_id: performerSongs[p.user_id],
+          selected: false, // Alapértelmezetten hamis, amíg bent a wait-roomban ki nem választja magának
+        });
+      }
+    });
+
+    if (performanceInserts.length > 0) {
+      await supabase.from('performances').insert(performanceInserts);
+    }
+
     setEditingComp(null);
     fetchCompetitions();
   };
 
-  // 🌟 KATEGÓRIÁK CSOPORTOSÍTOTT ÉS MAGYAR ÁBÉCÉ SZERINTI ÉLŐ RENDEZÉSE
+  // KATEGÓRIÁK CSOPORTOSÍTOTT ÉS MAGYAR ÁBÉCÉ SZERINTI ÉLŐ RENDEZÉSE
   const sortedCategories = useMemo(() => {
     return [...allMiscCategories].sort((a, b) => {
       const inCompA = compCategories.includes(a.id) ? 1 : 0;
       const inCompB = compCategories.includes(b.id) ? 1 : 0;
-
-      // 1. Csoportosítás: Amelyik be van jelölve (1), az jön előre
-      if (inCompB !== inCompA) {
-        return inCompB - inCompA;
-      }
-
-      // 2. Csoporton belüli rendezés: Magyar ábécé a kategória neve alapján
+      if (inCompB !== inCompA) return inCompB - inCompA;
       return a.name.localeCompare(b.name, 'hu');
     });
   }, [allMiscCategories, compCategories]);
@@ -275,13 +358,7 @@ const AdminDashboard = () => {
     return [...allPeople].sort((a, b) => {
       const inCompA = compParticipants.some((p) => p.user_id === a.id) ? 1 : 0;
       const inCompB = compParticipants.some((p) => p.user_id === b.id) ? 1 : 0;
-
-      // 1. Csoportosítás: Aki be van válogatva (1), az jön előre
-      if (inCompB !== inCompA) {
-        return inCompB - inCompA;
-      }
-
-      // 2. Csoporton belüli rendezés: Magyar ékezetes ábécé
+      if (inCompB !== inCompA) return inCompB - inCompA;
       return a.name.localeCompare(b.name, 'hu');
     });
   }, [allPeople, compParticipants]);
@@ -467,7 +544,6 @@ const AdminDashboard = () => {
               className='flex flex-column gap-10 max-h-300 ofy-auto mb-16 p-4 border-sm border-transparent b-radius-10'
               style={{ borderBottomColor: 'var(--color-grey)' }}
             >
-              {/* 🌟 Most már a rendezett kategóriák listáját (sortedCategories) mapeljük le */}
               {sortedCategories.map((cat) => (
                 <label
                   key={cat.id}
@@ -481,10 +557,7 @@ const AdminDashboard = () => {
                     style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                   />
                   <div>
-                    <div
-                      className='font-bold text-color-white'
-                      style={{ textAlign: 'left' }}
-                    >
+                    <div className='font-bold text-color-white text-left'>
                       {cat.name}
                     </div>
                     <div className='text-sm text-color-grey'>
@@ -525,10 +598,10 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        {/* JOBB OSZLOP: Felhasználók és szerepkörök */}
+        {/* JOBB OSZLOP: Felhasználók, szerepkörök és dalválasztások */}
         <div
           className='flex-fill p-20 border-sm border-grey b-radius-20 bg-bg'
-          style={{ minWidth: '500px' }}
+          style={{ minWidth: '550px' }}
         >
           <h2 className='mb-16 text-color-text'>Résztvevők és Jogosultságok</h2>
 
@@ -552,80 +625,162 @@ const AdminDashboard = () => {
 
           <div
             className='flex flex-column gap-10 ofy-auto pr-4'
-            style={{ maxHeight: '600px' }}
+            style={{ maxHeight: '650px' }}
           >
             {sortedPeople.map((person) => {
               const part = compParticipants.find(
                 (p) => p.user_id === person.id,
               );
               const inComp = !!part;
+              const isPerformerActive = inComp && part.is_performer;
 
               return (
                 <div
                   key={person.id}
-                  className={`flex flex-row flex-justify-space-between flex-align-center p-8 b-radius-10 border-sm transition-all ${inComp ? 'border-text bg-transparent' : 'border-grey opacity-50'}`}
+                  className={`flex flex-column p-12 b-radius-10 border-sm transition-all gap-10 ${inComp ? 'border-text bg-transparent' : 'border-grey opacity-50'}`}
                 >
-                  <div className='text-left'>
-                    <div className='font-bold text-lg text-left'>
-                      {person.name}
+                  {/* Felső információs sor */}
+                  <div className='flex flex-row flex-justify-space-between flex-align-center w-100'>
+                    <div className='text-left'>
+                      <div className='font-bold text-lg text-color-white'>
+                        {person.name}
+                      </div>
+                      <div className='text-sm text-color-grey'>
+                        {inComp
+                          ? 'Szelektálva a versenyre'
+                          : 'Nincs a versenyben'}
+                      </div>
                     </div>
-                    <div className='text-sm text-color-grey'>
-                      {inComp
-                        ? 'Szelektálva a versenyre'
-                        : 'Nincs a versenyben'}
-                    </div>
-                  </div>
 
-                  <div className='flex flex-row gap-10 flex-align-center'>
-                    {inComp ? (
-                      <>
+                    <div className='flex flex-row gap-8 flex-align-center'>
+                      {inComp ? (
+                        <>
+                          <button
+                            className={`px-8 py-4 text-sm b-radius-5 font-bold border-none ${part.is_voter ? 'bg-text text-color-bg' : 'bg-grey text-color-bg'}`}
+                            style={{ cursor: 'pointer' }}
+                            onClick={() =>
+                              toggleParticipantRole(person.id, 'is_voter')
+                            }
+                          >
+                            Voter
+                          </button>
+                          <button
+                            className={`px-8 py-4 text-sm b-radius-5 font-bold border-none ${part.is_jury ? 'bg-text text-color-bg' : 'bg-grey text-color-bg'}`}
+                            style={{ cursor: 'pointer' }}
+                            onClick={() =>
+                              toggleParticipantRole(person.id, 'is_jury')
+                            }
+                          >
+                            Jury
+                          </button>
+                          <button
+                            className={`px-8 py-4 text-sm b-radius-5 font-bold border-none ${part.is_performer ? 'bg-text text-color-bg' : 'bg-grey text-color-bg'}`}
+                            style={{ cursor: 'pointer' }}
+                            onClick={() =>
+                              toggleParticipantRole(person.id, 'is_performer')
+                            }
+                          >
+                            Performer
+                          </button>
+                          <button
+                            className='px-8 py-4 text-sm bg-acc text-color-white b-radius-5 border-none font-bold ml-6'
+                            style={{ cursor: 'pointer' }}
+                            onClick={() => removeParticipant(person.id)}
+                          >
+                            ✕
+                          </button>
+                        </>
+                      ) : (
                         <button
-                          className={`px-8 py-4 text-sm b-radius-5 font-bold border-none ${part.is_voter ? 'bg-text text-color-bg' : 'bg-grey text-color-bg'}`}
+                          className='px-12 py-6 border-sm border-text text-color-text b-radius-5 bg-transparent font-bold'
                           style={{ cursor: 'pointer' }}
                           onClick={() =>
                             toggleParticipantRole(person.id, 'is_voter')
                           }
                         >
-                          Voter
+                          ➕ Beválogat
                         </button>
-                        <button
-                          className={`px-8 py-4 text-sm b-radius-5 font-bold border-none ${part.is_jury ? 'bg-text text-color-bg' : 'bg-grey text-color-bg'}`}
-                          style={{ cursor: 'pointer' }}
-                          onClick={() =>
-                            toggleParticipantRole(person.id, 'is_jury')
-                          }
-                        >
-                          Jury
-                        </button>
-                        <button
-                          className={`px-8 py-4 text-sm b-radius-5 font-bold border-none ${part.is_performer ? 'bg-text text-color-bg' : 'bg-grey text-color-bg'}`}
-                          style={{ cursor: 'pointer' }}
-                          onClick={() =>
-                            toggleParticipantRole(person.id, 'is_performer')
-                          }
-                        >
-                          Performer
-                        </button>
-                        <button
-                          className='px-8 py-4 text-sm bg-acc text-color-white b-radius-5 border-none font-bold ml-10'
-                          style={{ cursor: 'pointer' }}
-                          onClick={() => removeParticipant(person.id)}
-                        >
-                          ✕ Kivág
-                        </button>
-                      </>
-                    ) : (
-                      <button
-                        className='px-12 py-6 border-sm border-text text-color-text b-radius-5 bg-transparent font-bold'
-                        style={{ cursor: 'pointer' }}
-                        onClick={() =>
-                          toggleParticipantRole(person.id, 'is_voter')
-                        }
-                      >
-                        ➕ Beválogat
-                      </button>
-                    )}
+                      )}
+                    </div>
                   </div>
+
+                  {/* 🌟 ALSÓ SZEKCIÓ: Dal választó (Csak ha az illető be van válogatva ÉS Performer!) */}
+                  {isPerformerActive && (
+                    <div className='p-10 b-radius-5 bg-bg border-sm border-grey flex flex-column gap-6 mt-4'>
+                      <div className='flex flex-row flex-justify-space-between flex-align-center gap-10'>
+                        <label className='text-sm text-color-text font-bold'>
+                          Hozzárendelt dal:
+                        </label>
+                        <button
+                          className='text-sm text-color-acc bg-transparent border-none font-bold underline'
+                          style={{ cursor: 'pointer' }}
+                          onClick={() =>
+                            setActiveSongAddingUserId(
+                              activeSongAddingUserId === person.id
+                                ? null
+                                : person.id,
+                            )
+                          }
+                        >
+                          {activeSongAddingUserId === person.id
+                            ? 'Bezár'
+                            : '➕ Új dal a DB-be'}
+                        </button>
+                      </div>
+
+                      {/* Dalválasztó legördülő menü (Select) */}
+                      {activeSongAddingUserId !== person.id ? (
+                        <select
+                          className='p-8 b-radius-5 bg-grey text-color-bg font-bold border-none w-100'
+                          value={performerSongs[person.id] || ''}
+                          onChange={(e) =>
+                            handleSelectSongForPerformer(
+                              person.id,
+                              e.target.value,
+                            )
+                          }
+                          style={{ cursor: 'pointer' }}
+                        >
+                          <option value=''>
+                            -- Válassz dalt a repertoárból --
+                          </option>
+                          {allSongs.map((song) => (
+                            <option key={song.id} value={song.id}>
+                              {song.artist} - {song.title}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        /* Inline új dal hozzáadása panelek */
+                        <div className='p-8 border-sm border-acc b-radius-5 flex flex-column gap-8 bg-bg mt-4'>
+                          <div className='text-sm font-bold text-color-acc'>
+                            Új dal felvitele a rendszerbe:
+                          </div>
+                          <input
+                            type='text'
+                            placeholder='Előadó / Előadók'
+                            className='p-6 b-radius-5 bg-grey text-color-bg border-none text-sm font-bold'
+                            value={newSongArtist}
+                            onChange={(e) => setNewSongArtist(e.target.value)}
+                          />
+                          <input
+                            type='text'
+                            placeholder='Dal címe'
+                            className='p-6 b-radius-5 bg-grey text-color-bg border-none text-sm font-bold'
+                            value={newSongTitle}
+                            onChange={(e) => setNewSongTitle(e.target.value)}
+                          />
+                          <button
+                            className='py-6 bg-acc text-color-white font-bold b-radius-5 border-none text-sm'
+                            style={{ cursor: 'pointer' }}
+                            onClick={() => handleCreateAndAddSong(person.id)}
+                          >
+                            Dal mentése és kiválasztása
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}
