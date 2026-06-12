@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react'; // 🌟 useMemo hozzáadva
 import { useUser } from '../../context/UserContext';
 import { usePerformancesForVoting } from '../../hooks/usePerformancesForVoting';
 import { useMiscCategoriesForCompetition } from '../../hooks/useMiscCategoriesForCompetition';
@@ -30,32 +30,26 @@ const Vote = () => {
   const SEEN_REVIEW_KEY = `user_${userId}_has_seen_review`;
 
   // --- 🌟 EXPIRATION GUARD HELPER FUNCTION 🌟 ---
-  // Reads item and instantly garbage-collects it if its 12h limit has passed
   const getInitialValueWithExpiry = (storageKey, defaultValue) => {
     const rawData = localStorage.getItem(storageKey);
     if (!rawData) return defaultValue;
 
     try {
       const parsed = JSON.parse(rawData);
-
-      // If the record has our timestamp wrapper structure, validate it!
       if (parsed && typeof parsed === 'object' && 'exp' in parsed) {
         if (Date.now() > parsed.exp) {
-          localStorage.removeItem(storageKey); // ❌ Expired data found -> Wipe it out!
-          console.log(`🧹 Stale storage wiped cleanly: ${storageKey}`);
+          localStorage.removeItem(storageKey);
           return defaultValue;
         }
-        return parsed.value; // Data is fresh, use it!
+        return parsed.value;
       }
-
-      // Fallback for legacy records that don't have an expiration wrapper yet
       return parsed;
     } catch (e) {
       return defaultValue;
     }
   };
 
-  // --- States (Using our expiry evaluation helper wrapper) ---
+  // --- States ---
   const [selectedPerformers, setSelectedPerformers] = useState(() => {
     return getInitialValueWithExpiry(SEL_KEY, []);
   });
@@ -80,9 +74,15 @@ const Vote = () => {
   const { data: competition } = useActiveCompetition();
   const topNumber = competition?.top_number;
 
+  // 🌟 JAVÍTÁS: Kiszűrjük a listából a felesleges, nem kiválasztott dalokat.
+  // Csak az a teljesítmény (performance) mehet a szavazólapra, amit az énekes kiválasztott!
+  const activePerformances = useMemo(() => {
+    return performances.filter((p) => p.selected && p.songs);
+  }, [performances]);
+
   const reviewStepIndex = 2 + (miscCategories?.length || 0);
 
-  // Restore Swiper Position on Mount with Expiration evaluation built-in
+  // Restore Swiper Position on Mount
   useEffect(() => {
     if (!perfLoading && seqRef.current) {
       const savedStep = getInitialValueWithExpiry(STEP_KEY, null);
@@ -94,17 +94,13 @@ const Vote = () => {
     }
   }, [perfLoading]);
 
-  // --- 🌟 AUTO-SAVE EFFECT WITH TIMESTAMP PACKAGING 🌟 ---
+  // AUTO-SAVE EFFECT
   useEffect(() => {
     if (!userId) return;
 
     const expirationTime = Date.now() + SESSION_DURATION_MS;
-
     const saveWithExpiry = (key, dataValue) => {
-      const wrapper = {
-        value: dataValue,
-        exp: expirationTime,
-      };
+      const wrapper = { value: dataValue, exp: expirationTime };
       localStorage.setItem(key, JSON.stringify(wrapper));
     };
 
@@ -116,40 +112,29 @@ const Vote = () => {
   useEffect(() => {
     if (!userId) return;
 
-    // If the user cleared their choices, wipe out the ranking state entries too
     if (selectedPerformers.length === 0) {
       setRankingEntries([]);
       return;
     }
 
     setRankingEntries((prevRankings) => {
-      // 1. Strip out any old data objects wrapper if it exists from initial states
       const flatPrevRankings = Array.isArray(prevRankings) ? prevRankings : [];
-
-      // 2. Remove any entries that are no longer present in selectedPerformers
       const preservedRankings = flatPrevRankings.filter((entry) =>
         selectedPerformers.includes(entry.performance_id),
       );
 
-      // 3. Find newly added performer IDs that don't have a rank yet
       const existingIds = preservedRankings.map((r) => r.performance_id);
       const newIds = selectedPerformers.filter(
         (id) => !existingIds.includes(id),
       );
 
-      // 4. Map new additions to the end of the ranking list
       const newEntries = newIds.map((id, index) => ({
         performance_id: id,
         rank: preservedRankings.length + index + 1,
       }));
 
       const combined = [...preservedRankings, ...newEntries];
-
-      // 5. Re-index ranks strictly sequentially (1, 2, 3...) to avoid numeric gaps
-      return combined.map((entry, idx) => ({
-        ...entry,
-        rank: idx + 1,
-      }));
+      return combined.map((entry, idx) => ({ ...entry, rank: idx + 1 }));
     });
   }, [selectedPerformers, userId]);
 
@@ -159,7 +144,6 @@ const Vote = () => {
     if (!userId) return;
 
     const expirationTime = Date.now() + SESSION_DURATION_MS;
-
     localStorage.setItem(
       STEP_KEY,
       JSON.stringify({ value: swiper.activeIndex, exp: expirationTime }),
@@ -203,8 +187,9 @@ const Vote = () => {
       {/* Step 1: Select top performers */}
       {topNumber > 0 && (
         <div className='flex flex-column gap-24 flex-align-center h-100 ofy-hidden w-100'>
+          {/* 🌟 MÓDOSÍTVA: performances helyett activePerformances-t kap */}
           <SelectPerformersStep
-            performances={performances}
+            performances={activePerformances}
             max={topNumber}
             selected={selectedPerformers}
             onConfirm={(ids) => {
@@ -219,8 +204,9 @@ const Vote = () => {
       {/* Step 2: Rank Selected Performers */}
       {topNumber > 0 && (
         <div className='flex flex-column gap-24 flex-align-center h-100 ofy-hidden w-100'>
+          {/* 🌟 MÓDOSÍTVA: performances helyett activePerformances-t kap */}
           <RankPerformersStep
-            performances={performances}
+            performances={activePerformances}
             performers={selectedPerformers}
             rankingEntries={rankingEntries}
             hasSeenReview={hasSeenReview}
@@ -244,9 +230,10 @@ const Vote = () => {
           key={cat.id}
           className='flex flex-column gap-24 flex-align-center h-100 ofy-hidden w-100'
         >
+          {/* 🌟 MÓDOSÍTVA: performances helyett activePerformances-t kap */}
           <VoteMiscStep
             category={cat}
-            performances={performances}
+            performances={activePerformances}
             selected={miscVotes[cat.id]}
             hasSeenReview={hasSeenReview}
             onFastForward={handleFastForwardToReview}
@@ -262,10 +249,11 @@ const Vote = () => {
 
       {/* Step 4: Final Review Summary Page */}
       <div className='flex flex-column gap-24 flex-align-center h-100 ofy-hidden w-100'>
+        {/* 🌟 MÓDOSÍTVA: performances helyett activePerformances-t kap */}
         <ReviewVoteStep
           rankings={rankingEntries}
           miscVotes={miscVotes}
-          performances={performances}
+          performances={activePerformances}
           categories={miscCategories}
           onSubmit={handleVoteSubmit}
           onBack={() => seqRef.current?.slidePrev()}

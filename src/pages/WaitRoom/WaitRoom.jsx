@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../../context/UserContext';
 import { useProfileDisplay } from '../../context/ProfileDisplayContext';
@@ -32,10 +32,21 @@ const WaitRoom = () => {
   const isJury = !!userRoles?.is_jury;
   const isVoter = !!userRoles?.is_voter;
 
+  const {
+    data: performances = [],
+    isLoading: perfLoading,
+    refetch: refetchPerformances,
+  } = usePerformancesForVoting(user?.competition_id, user?.user_id);
+  const { data: categories = [] } = useMiscCategoriesForCompetition(
+    user?.competition_id,
+  );
+
+  // --- 1. Real-time csatorna a verseny indításához és az élő dalválasztásokhoz ---
   useEffect(() => {
     if (!user) return navigate('/');
 
-    const channel = supabase
+    // Csatorna a verseny státuszának figyeléséhez (Voting elindítása)
+    const compChannel = supabase
       .channel('competition-status')
       .on(
         'postgres_changes',
@@ -57,16 +68,44 @@ const WaitRoom = () => {
       )
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user, currentCompId, isVoter, navigate]);
+    // 🌟 ÚJ REAL-TIME CSATORNA: Ha valaki dalt választ, azonnal frissítjük a listát, így élőben kiszínesedik az ikonja!
+    const perfChannel = supabase
+      .channel('live-performances-selection')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'performances',
+          filter: `competition_id=eq.${currentCompId}`,
+        },
+        () => {
+          refetchPerformances();
+        },
+      )
+      .subscribe();
 
-  const { data: performances = [], isLoading: perfLoading } =
-    usePerformancesForVoting(user?.competition_id, user?.user_id);
-  const { data: categories = [] } = useMiscCategoriesForCompetition(
-    user?.competition_id,
-  );
+    return () => {
+      supabase.removeChannel(compChannel);
+      supabase.removeChannel(perfChannel);
+    };
+  }, [user, currentCompId, isVoter, isJury, navigate, refetchPerformances]);
+
+  // --- 2. 🌟 CSOPORTOSÍTÁSI LOGIKA: Egy énekes csak egyszer jelenhet meg ---
+  const uniquePerformers = useMemo(() => {
+    const grouped = {};
+
+    performances.forEach((perf) => {
+      const userId = perf.performer_id;
+
+      // Ha még nem láttuk ezt az énekest, vagy a mostani rekordnál a selected === true (tehát ez az aktív dala)
+      if (!grouped[userId] || perf.selected) {
+        grouped[userId] = perf;
+      }
+    });
+
+    return Object.values(grouped);
+  }, [performances]);
 
   const handleStartVoting = async () => {
     setIsStarting(true);
@@ -98,21 +137,28 @@ const WaitRoom = () => {
         >
           <ProfileDisplayFlip />
         </div>
-        {performances.map((p) => (
-          <div
-            key={p.id}
-            className='w-100 ar-square'
-            style={{ maxWidth: 'calc((100% - 30px) / 4)' }}
-            onClick={() => p.selected && setSelectedPerformer(p)}
-          >
-            <Avatar
-              imgSrc={p.people.avatar}
-              imgName={p.people.name}
-              state={p.selected ? 'default' : 'faded'}
-              display={profileDisplay.icon}
-            />
-          </div>
-        ))}
+
+        {/* 🌟 Most már a letisztított, egyedi énekesek listáján futunk végig */}
+        {uniquePerformers.map((p) => {
+          const hasSelectedSong = p.selected && p.songs;
+
+          return (
+            <div
+              key={p.performer_id} // p.id helyeről p.performer_id-ra cserélve a konzolos kulcs-ütközések elkerülésére
+              className='w-100 ar-square'
+              style={{ maxWidth: 'calc((100% - 30px) / 4)' }}
+              onClick={() => hasSelectedSong && setSelectedPerformer(p)}
+            >
+              <Avatar
+                imgSrc={p.people.avatar}
+                imgName={p.people.name}
+                // Ha van kiválasztott dala, rendes színű (default), ha nincs, akkor halvány (faded)
+                state={hasSelectedSong ? 'default' : 'faded'}
+                display={profileDisplay.icon}
+              />
+            </div>
+          );
+        })}
       </GridFlow>
 
       {isJury && (
