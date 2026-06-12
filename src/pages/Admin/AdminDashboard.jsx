@@ -25,7 +25,7 @@ const AdminDashboard = () => {
 
   // Dalok kezeléséhez szükséges állapotok
   const [allSongs, setAllSongs] = useState([]);
-  const [performerSongs, setPerformerSongs] = useState({});
+  const [performerSongs, setPerformerSongs] = useState({}); // 🌟 MÓDOSÍTVA: { [user_id]: [song_id1, song_id2...] } - Tömböt tárolunk!
   const [newSongArtist, setNewSongArtist] = useState('');
   const [newSongTitle, setNewSongTitle] = useState('');
   const [activeSongAddingUserId, setActiveSongAddingUserId] = useState(null);
@@ -112,9 +112,11 @@ const AdminDashboard = () => {
         .select('performer_id, song_id')
         .eq('competition_id', comp.id);
 
+      // 🌟 MÓDOSÍTVA: Többes dal lekérdezés és csoportosítás
       const songMapping = {};
       perfs?.forEach((p) => {
-        songMapping[p.performer_id] = p.song_id;
+        if (!songMapping[p.performer_id]) songMapping[p.performer_id] = [];
+        songMapping[p.performer_id].push(p.song_id);
       });
       setPerformerSongs(songMapping);
     } else {
@@ -139,9 +141,11 @@ const AdminDashboard = () => {
           .select('performer_id, song_id')
           .eq('competition_id', lastActive.id);
 
+        // 🌟 MÓDOSÍTVA: Bulk import esetén az előző adatok többes dalainak csoportosítása
         const songMapping = {};
         lastPerfs?.forEach((p) => {
-          songMapping[p.performer_id] = p.song_id;
+          if (!songMapping[p.performer_id]) songMapping[p.performer_id] = [];
+          songMapping[p.performer_id].push(p.song_id);
         });
         setPerformerSongs(songMapping);
       }
@@ -228,19 +232,16 @@ const AdminDashboard = () => {
     }
   };
 
-  // --- 🌟 PROFILKÉP FELTÖLTÉS ÉS TÖRLÉS LOGIKA (Módosított névvel) 🌟 ---
+  // --- Profilkép feltöltés és törlés logika ---
   const handleAvatarUpload = async (userId, file) => {
     if (!file) return;
     setLoading(true);
 
     try {
       const fileExt = file.name.split('.').pop();
-      // 🌟 Kérésedre a pontos fájlnév formátum: avatar_user_{userID}.ext
       const fileName = `avatar-user-${userId}.${fileExt}`;
       const filePath = `${fileName}`;
 
-      // Mivel a név fix, az esetleges gyorsítótárazási (cache) problémák vagy ütközések elkerülésére
-      // az `upsert: true` opcióval kényszerítjük a Supabase-t, hogy gond nélkül írja felül, ha már van ilyen nevű fájl.
       const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(filePath, file, { upsert: true });
@@ -251,8 +252,6 @@ const AdminDashboard = () => {
         data: { publicUrl },
       } = supabase.storage.from('avatars').getPublicUrl(filePath);
 
-      // Kényszerítünk egy cache-bust paramétert (?t= timestamp) az URL végére,
-      // így a böngésző azonnal frissíti a képet a képernyőn a felülírás után is.
       const dynamicUrl = `${publicUrl}?t=${Date.now()}`;
 
       const { error: updateError } = await supabase
@@ -277,7 +276,6 @@ const AdminDashboard = () => {
     setLoading(true);
 
     try {
-      // Megtisztítjuk a kapott URL-t a mögé rakott cache-bust timestamp karakterektől (?t=...)
       const cleanUrl = currentAvatarUrl.split('?')[0];
       const urlParts = cleanUrl.split('/');
       const fileName = urlParts[urlParts.length - 1];
@@ -301,11 +299,24 @@ const AdminDashboard = () => {
     }
   };
 
-  // --- Dal választás és Új dal beszúrása ---
-  const handleSelectSongForPerformer = (userId, songId) => {
+  // --- 🌟 ÚJ FUNKCIÓK: TÖBBES DAL HOZZÁADÁS ÉS ELTÁVOLÍTÁS 🌟 ---
+  const handleAddSongToPerformer = (userId, songId) => {
+    if (!songId) return;
+    const sId = parseInt(songId, 10);
+
+    setPerformerSongs((prev) => {
+      const currentList = prev[userId] || [];
+      if (!currentList.includes(sId)) {
+        return { ...prev, [userId]: [...currentList, sId] };
+      }
+      return prev;
+    });
+  };
+
+  const handleRemoveSongFromPerformer = (userId, songId) => {
     setPerformerSongs((prev) => ({
       ...prev,
-      [userId]: songId ? parseInt(songId, 10) : null,
+      [userId]: (prev[userId] || []).filter((id) => id !== songId),
     }));
   };
 
@@ -322,7 +333,11 @@ const AdminDashboard = () => {
       setAllSongs((prev) =>
         [...prev, data].sort((a, b) => a.artist.localeCompare(b.artist, 'hu')),
       );
-      setPerformerSongs((prev) => ({ ...prev, [userId]: data.id }));
+      // 🌟 Új dal fűzése az énekes meglévő daltömbjéhez
+      setPerformerSongs((prev) => ({
+        ...prev,
+        [userId]: [...(prev[userId] || []), data.id],
+      }));
       setNewSongArtist('');
       setNewSongTitle('');
       setActiveSongAddingUserId(null);
@@ -382,15 +397,24 @@ const AdminDashboard = () => {
       await supabase.from('competition_participants').insert(partInserts);
     }
 
+    // --- 🌟 TÖBBES REKORD BESZÚRÁS A PERFORMANCES TÁBLÁBA ---
     await supabase.from('performances').delete().eq('competition_id', compId);
     const performanceInserts = [];
+
     compParticipants.forEach((p) => {
-      if (p.is_performer && performerSongs[p.user_id]) {
-        performanceInserts.push({
-          competition_id: compId,
-          performer_id: p.user_id,
-          song_id: performerSongs[p.user_id],
-          selected: false,
+      if (
+        p.is_performer &&
+        performerSongs[p.user_id] &&
+        performerSongs[p.user_id].length > 0
+      ) {
+        // Végigiterálunk a felhasználóhoz rendelt összes dal ID-ján
+        performerSongs[p.user_id].forEach((songId) => {
+          performanceInserts.push({
+            competition_id: compId,
+            performer_id: p.user_id,
+            song_id: songId,
+            selected: false,
+          });
         });
       }
     });
@@ -691,6 +715,9 @@ const AdminDashboard = () => {
               const inComp = !!part;
               const isPerformerActive = inComp && part.is_performer;
 
+              // 🌟 Az aktuális énekeshez rendelt dalok listája (ha nincs, üres tömb)
+              const activeSongsForThisUser = performerSongs[person.id] || [];
+
               return (
                 <div
                   key={person.id}
@@ -805,12 +832,12 @@ const AdminDashboard = () => {
                     </div>
                   </div>
 
-                  {/* Dal választó */}
+                  {/* 🌟 REFAKTORÁLT TÖBBSZÖRÖS DALVÁLASZTÓ LISTA 🌟 */}
                   {isPerformerActive && (
                     <div className='p-10 b-radius-5 bg-bg border-sm border-grey flex flex-column gap-6 mt-2'>
                       <div className='flex flex-row flex-justify-space-between flex-align-center gap-10'>
                         <label className='text-sm text-color-text font-bold'>
-                          Hozzárendelt dal:
+                          Hozzárendelt dalok ({activeSongsForThisUser.length}):
                         </label>
                         <button
                           className='text-sm text-color-acc bg-transparent border-none font-bold underline p-4'
@@ -829,15 +856,48 @@ const AdminDashboard = () => {
                         </button>
                       </div>
 
+                      {/* Már hozzáadott dalok listája törlés gombokkal */}
+                      {activeSongsForThisUser.length > 0 && (
+                        <div className='flex flex-column gap-6 my-6'>
+                          {activeSongsForThisUser.map((songId) => {
+                            const songObj = allSongs.find(
+                              (s) => s.id === songId,
+                            );
+                            if (!songObj) return null;
+                            return (
+                              <div
+                                key={songId}
+                                className='flex flex-row flex-justify-space-between flex-align-center bg-grey p-6 b-radius-5 text-sm font-bold text-color-bg'
+                              >
+                                <span className='text-left'>
+                                  {songObj.artist} - {songObj.title}
+                                </span>
+                                <button
+                                  className='border-none bg-transparent text-color-acc font-bold ml-10 px-4 text-md'
+                                  style={{ cursor: 'pointer' }}
+                                  onClick={() =>
+                                    handleRemoveSongFromPerformer(
+                                      person.id,
+                                      songId,
+                                    )
+                                  }
+                                  title='Dal levétele az énekesről'
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
                       {activeSongAddingUserId !== person.id ? (
+                        /* Legördülő menü dalok hozzáadására a listához */
                         <select
                           className='p-8 b-radius-5 bg-grey text-color-bg font-bold border-none w-100'
-                          value={performerSongs[person.id] || ''}
+                          value=''
                           onChange={(e) =>
-                            handleSelectSongForPerformer(
-                              person.id,
-                              e.target.value,
-                            )
+                            handleAddSongToPerformer(person.id, e.target.value)
                           }
                           style={{ cursor: 'pointer' }}
                         >
@@ -851,6 +911,7 @@ const AdminDashboard = () => {
                           ))}
                         </select>
                       ) : (
+                        /* Inline új dal létrehozása form */
                         <div className='p-8 border-sm border-acc b-radius-5 flex flex-column gap-8 bg-bg mt-4'>
                           <div className='text-sm font-bold text-color-acc'>
                             Új dal felvitele:
