@@ -23,9 +23,9 @@ function App() {
           <Route path='/vote' element={<Vote />} />
           <Route path='/thanks' element={<Thanks />} />
           <Route path='/results' element={<Results />} />
-          <Route path='/admin' element={<AdminDashboard />} />
           <Route path='*' element={<NotFound />} />
         </Route>
+        <Route path='/admin' element={<AdminDashboard />} />
       </Routes>
     </Router>
   );

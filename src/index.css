@@ -152,6 +152,14 @@ h2 {
   flex: 1;
 }
 
+.gap-6 {
+  gap: 6px;
+}
+
+.gap-8 {
+  gap: 8px;
+}
+
 .gap-10 {
   gap: 10px;
 }
@@ -180,6 +188,10 @@ h2 {
 
 .p-8 {
   padding: 8px;
+}
+
+.p-10 {
+  padding: 10px;
 }
 
 .p-12 {
@@ -283,6 +295,10 @@ h2 {
 
 .m-auto {
   margin: auto;
+}
+
+.mt-4 {
+  margin-top: 4px;
 }
 
 .mb-16 {

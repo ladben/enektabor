@@ -3,3 +3,7 @@ body {
   margin: 0 auto;
   background-color: var(--color-background);
 }
+
+body:has(#admin-dashboard) {
+  max-width: 1200px;
+}

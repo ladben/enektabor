@@ -371,6 +371,7 @@ const AdminDashboard = () => {
   if (!editingComp) {
     return (
       <div
+        id='admin-dashboard'
         className='w-100 ofy-auto p-32 text-color-white'
         style={{ maxWidth: '1200px', textAlign: 'left' }}
       >
@@ -460,6 +461,7 @@ const AdminDashboard = () => {
   // ==========================================
   return (
     <div
+      id='admin-dashboard'
       className='w-100 ofy-auto p-32 text-color-white'
       style={{ maxWidth: '1200px', textAlign: 'left' }}
     >
@@ -642,7 +644,7 @@ const AdminDashboard = () => {
                   {/* Felső információs sor */}
                   <div className='flex flex-row flex-justify-space-between flex-align-center w-100'>
                     <div className='text-left'>
-                      <div className='font-bold text-lg text-color-white'>
+                      <div className='font-bold text-lg text-color-white text-left'>
                         {person.name}
                       </div>
                       <div className='text-sm text-color-grey'>
@@ -712,7 +714,7 @@ const AdminDashboard = () => {
                           Hozzárendelt dal:
                         </label>
                         <button
-                          className='text-sm text-color-acc bg-transparent border-none font-bold underline'
+                          className='text-sm text-color-acc bg-transparent border-none font-bold underline p-4'
                           style={{ cursor: 'pointer' }}
                           onClick={() =>
                             setActiveSongAddingUserId(
