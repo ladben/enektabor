@@ -98,13 +98,21 @@ const WaitRoom = () => {
     performances.forEach((perf) => {
       const userId = perf.performer_id;
 
-      // Ha még nem láttuk ezt az énekest, vagy a mostani rekordnál a selected === true (tehát ez az aktív dala)
+      // Csoportosítás: Ha még nem láttuk, vagy ez az aktívan kiválasztott dala
       if (!grouped[userId] || perf.selected) {
         grouped[userId] = perf;
       }
     });
 
-    return Object.values(grouped);
+    // Tömbbe rendezzük a csoportosított elemeket
+    const performersArray = Object.values(grouped);
+
+    // Élő rendezés a személy neve alapján, a magyar ábécé szabályai szerint
+    return performersArray.sort((a, b) => {
+      const nameA = a.people?.name || '';
+      const nameB = b.people?.name || '';
+      return nameA.localeCompare(nameB, 'hu');
+    });
   }, [performances]);
 
   const handleStartVoting = async () => {

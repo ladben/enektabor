@@ -77,7 +77,13 @@ const Vote = () => {
   // 🌟 JAVÍTÁS: Kiszűrjük a listából a felesleges, nem kiválasztott dalokat.
   // Csak az a teljesítmény (performance) mehet a szavazólapra, amit az énekes kiválasztott!
   const activePerformances = useMemo(() => {
-    return performances.filter((p) => p.selected && p.songs);
+    const filtered = performances.filter((p) => p.selected && p.songs);
+
+    return filtered.sort((a, b) => {
+      const nameA = a.people?.name || '';
+      const nameB = b.people?.name || '';
+      return nameA.localeCompare(nameB, 'hu');
+    });
   }, [performances]);
 
   const reviewStepIndex = 2 + (miscCategories?.length || 0);
