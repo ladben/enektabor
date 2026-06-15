@@ -280,6 +280,7 @@ const AdminDashboard = () => {
 
   // --- Profilkép feltöltés és törlés ---
   const handleAvatarUpload = async (userId, file) => {
+    if (!isSuperAdmin) return; // 🌟 KORLÁTOZÁS: Korlátozott adminok kódszinten sem tölthetnek fel képet
     if (!file) return;
     setLoading(true);
 
@@ -318,6 +319,7 @@ const AdminDashboard = () => {
   };
 
   const handleAvatarDelete = async (userId, currentAvatarUrl) => {
+    if (!isSuperAdmin) return; // 🌟 KORLÁTOZÁS: Korlátozott adminok kódszinten sem törölhetnek képet
     if (!currentAvatarUrl) return;
     setLoading(true);
 
@@ -554,7 +556,6 @@ const AdminDashboard = () => {
                   <input
                     type='checkbox'
                     checked={comp.is_active}
-                    // 🌟 KORLÁTOZÁS: Ha sima admin, nem kattintható (letiltott), de látja a státuszt
                     onChange={() =>
                       isSuperAdmin &&
                       handleToggleActive(comp.id, comp.is_active)
@@ -572,7 +573,6 @@ const AdminDashboard = () => {
                   <input
                     type='checkbox'
                     checked={comp.voting_started}
-                    // 🌟 KORLÁTOZÁS: Ha sima admin, nem kattintható ezen a felületen
                     onChange={() =>
                       isSuperAdmin &&
                       handleToggleVoting(comp.id, comp.voting_started)
@@ -806,22 +806,35 @@ const AdminDashboard = () => {
                           src={person.avatar || '/no_avatar.png'}
                           alt={person.name}
                           className='w-100 h-100 b-radius-10 border-sm border-grey'
-                          style={{ objectFit: 'cover', cursor: 'pointer' }}
-                          title='Kattints a kép cseréjéhez'
+                          // 🌟 KORLÁTOZÁS: Ha sima admin, az avatar nem kattintható, nincs pointer kurzor
+                          style={{
+                            objectFit: 'cover',
+                            cursor: isSuperAdmin ? 'pointer' : 'default',
+                          }}
+                          title={
+                            isSuperAdmin ? 'Kattints a kép cseréjéhez' : ''
+                          }
                           onClick={() =>
+                            isSuperAdmin &&
                             fileInputRefs.current[person.id]?.click()
                           }
                         />
-                        <input
-                          type='file'
-                          accept='image/*'
-                          ref={(el) => (fileInputRefs.current[person.id] = el)}
-                          style={{ display: 'none' }}
-                          onChange={(e) =>
-                            handleAvatarUpload(person.id, e.target.files[0])
-                          }
-                        />
-                        {person.avatar && (
+                        {/* 🌟 Csak superadminnak ágyazzuk be a file inputot a biztonság kedvéért */}
+                        {isSuperAdmin && (
+                          <input
+                            type='file'
+                            accept='image/*'
+                            ref={(el) =>
+                              (fileInputRefs.current[person.id] = el)
+                            }
+                            style={{ display: 'none' }}
+                            onChange={(e) =>
+                              handleAvatarUpload(person.id, e.target.files[0])
+                            }
+                          />
+                        )}
+                        {/* 🌟 KORLÁTOZÁS: A törlés gomb (✕) csak superadmin esetén renderelődik ki */}
+                        {person.avatar && isSuperAdmin && (
                           <div
                             className='pos-abs bg-acc text-color-white flex flex-align-center flex-justify-center font-bold b-radius-40-perc shadow-sm'
                             style={{
