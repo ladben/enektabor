@@ -4,7 +4,7 @@ import { Title, Button, Spinner } from '../../components';
 import bcrypt from 'bcryptjs';
 
 const AdminDashboard = () => {
-  const fileInputRefs = useRef({});
+  const fileInputRefs = useRef({}); // Refs az épp szerkesztett emberek file inputjaihoz
   const [competitions, setCompetitions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingComp, setEditingComp] = useState(null);
@@ -14,7 +14,7 @@ const AdminDashboard = () => {
   const adminUserId = sessionStorage.getItem('admin_user_id'); // A korlátozott admin ID-ja
   const isSuperAdmin = adminMode === 'superadmin';
 
-  // 🌟 ÚJ ÁLLAPOT: Az aktuálisan bejelentkezett szervező/admin neve
+  // ÚJ ÁLLAPOT: Az aktuálisan bejelentkezett szervező/admin neve
   const [adminName, setAdminName] = useState('');
 
   // Szerkesztési részletes állapotok
@@ -33,7 +33,7 @@ const AdminDashboard = () => {
 
   // Dalok kezeléséhez szükséges állapotok
   const [allSongs, setAllSongs] = useState([]);
-  const [performerSongs, setPerformerSongs] = useState({});
+  const [performerSongs, setPerformerSongs] = useState({}); // { [user_id]: [song_id1, song_id2...] }
   const [newSongArtist, setNewSongArtist] = useState('');
   const [newSongTitle, setNewSongTitle] = useState('');
   const [activeSongAddingUserId, setActiveSongAddingUserId] = useState(null);
@@ -41,10 +41,10 @@ const AdminDashboard = () => {
   useEffect(() => {
     fetchCompetitions();
     fetchGlobalData();
-    fetchAdminName(); // 🌟 Admin nevének betöltése mountoláskor
+    fetchAdminName(); // Admin nevének betöltése mountoláskor
   }, []);
 
-  // 🌟 ÚJ FÜGGVÉNY: Lekéri az admin nevének stringjét a 'people' táblából
+  // Lekéri az admin nevének stringjét a 'people' táblából
   const fetchAdminName = async () => {
     if (isSuperAdmin) {
       setAdminName('Superadmin');
@@ -103,7 +103,7 @@ const AdminDashboard = () => {
 
   // --- Verseny státusz kapcsolók ---
   const handleToggleActive = async (id, currentStatus) => {
-    if (currentStatus) return;
+    if (!isSuperAdmin || currentStatus) return; // 🌟 KORLÁTOZÁS: Sima admin nem indíthat/állíthat le aktív állapotot!
     setLoading(true);
 
     await supabase
@@ -119,6 +119,8 @@ const AdminDashboard = () => {
   };
 
   const handleToggleVoting = async (id, currentStatus) => {
+    if (!isSuperAdmin) return; // 🌟 KORLÁTOZÁS: Sima admin nem kapcsolhatja a szavazás státuszt ezen a panelen!
+
     await supabase
       .from('competitions')
       .update({ voting_started: !currentStatus })
@@ -154,7 +156,6 @@ const AdminDashboard = () => {
         .select('performer_id, song_id')
         .eq('competition_id', comp.id);
 
-      // 🌟 MÓDOSÍTVA: Meglévő többes dalok lekérdezése és strukturálása
       const songMapping = {};
       perfs?.forEach((p) => {
         if (!songMapping[p.performer_id]) songMapping[p.performer_id] = [];
@@ -185,7 +186,6 @@ const AdminDashboard = () => {
           .select('performer_id, song_id')
           .eq('competition_id', lastActive.id);
 
-        // 🌟 MÓDOSÍTVA: Bulk import többes dalainak struktúrája
         const songMapping = {};
         lastPerfs?.forEach((p) => {
           if (!songMapping[p.performer_id]) songMapping[p.performer_id] = [];
@@ -343,7 +343,7 @@ const AdminDashboard = () => {
     }
   };
 
-  // --- 🌟 MÓDOSÍTVA: TÖBBES DAL HOZZÁADÁS ÉS LEVÉTEL 🌟 ---
+  // --- Dal kezelő függvények ---
   const handleAddSongToPerformer = (userId, songId) => {
     if (!songId) return;
     const sId = parseInt(songId, 10);
@@ -377,7 +377,6 @@ const AdminDashboard = () => {
       setAllSongs((prev) =>
         [...prev, data].sort((a, b) => a.artist.localeCompare(b.artist, 'hu')),
       );
-      // 🌟 Új dal hozzá fűzése az énekes meglévő daltömbjéhez
       setPerformerSongs((prev) => ({
         ...prev,
         [userId]: [...(prev[userId] || []), data.id],
@@ -441,7 +440,6 @@ const AdminDashboard = () => {
       await supabase.from('competition_participants').insert(partInserts);
     }
 
-    // --- 🌟 TÖBBES REKORD BESZÚRÁSA A PERFORMANCES TÁBLÁBA ---
     await supabase.from('performances').delete().eq('competition_id', compId);
     const performanceInserts = [];
     compParticipants.forEach((p) => {
@@ -508,7 +506,6 @@ const AdminDashboard = () => {
         style={{ maxWidth: '1200px', textAlign: 'left' }}
       >
         <div className='flex flex-justify-space-between flex-align-center mb-24'>
-          {/* 🌟 MÓDOSÍTVA: Dinamikus fejléc, ami kiírja a bejelentkezett szervező nevét */}
           <Title
             text={
               isSuperAdmin
@@ -557,12 +554,17 @@ const AdminDashboard = () => {
                   <input
                     type='checkbox'
                     checked={comp.is_active}
-                    onChange={() => handleToggleActive(comp.id, comp.is_active)}
+                    // 🌟 KORLÁTOZÁS: Ha sima admin, nem kattintható (letiltott), de látja a státuszt
+                    onChange={() =>
+                      isSuperAdmin &&
+                      handleToggleActive(comp.id, comp.is_active)
+                    }
                     style={{
                       width: '20px',
                       height: '20px',
                       accentColor: 'var(--color-text)',
-                      cursor: 'pointer',
+                      cursor: isSuperAdmin ? 'pointer' : 'default',
+                      opacity: isSuperAdmin ? 1 : 0.6,
                     }}
                   />
                 </td>
@@ -570,14 +572,17 @@ const AdminDashboard = () => {
                   <input
                     type='checkbox'
                     checked={comp.voting_started}
+                    // 🌟 KORLÁTOZÁS: Ha sima admin, nem kattintható ezen a felületen
                     onChange={() =>
+                      isSuperAdmin &&
                       handleToggleVoting(comp.id, comp.voting_started)
                     }
                     style={{
                       width: '20px',
                       height: '20px',
                       accentColor: 'var(--color-accent)',
-                      cursor: 'pointer',
+                      cursor: isSuperAdmin ? 'pointer' : 'default',
+                      opacity: isSuperAdmin ? 1 : 0.6,
                     }}
                   />
                 </td>
@@ -784,8 +789,6 @@ const AdminDashboard = () => {
               );
               const inComp = !!part;
               const isPerformerActive = inComp && part.is_performer;
-
-              // 🌟 Az énekes aktuális daltömbje (ha nincs még, üres tömb)
               const activeSongsForThisUser = performerSongs[person.id] || [];
 
               return (
@@ -904,7 +907,6 @@ const AdminDashboard = () => {
                     </div>
                   </div>
 
-                  {/* 🌟 REFAKTORÁLT TÖBBSZÖRÖS DALVÁLASZTÓ LISTA 🌟 */}
                   {isPerformerActive && (
                     <div className='p-10 b-radius-5 bg-bg border-sm border-grey flex flex-column gap-6 mt-2'>
                       <div className='flex flex-row flex-justify-space-between flex-align-center gap-10'>
@@ -928,7 +930,6 @@ const AdminDashboard = () => {
                         </button>
                       </div>
 
-                      {/* Már hozzárendelt dalok listája törlési lehetőséggel */}
                       {activeSongsForThisUser.length > 0 && (
                         <div className='flex flex-column gap-6 my-6'>
                           {activeSongsForThisUser.map((songId) => {
@@ -964,7 +965,6 @@ const AdminDashboard = () => {
                       )}
 
                       {activeSongAddingUserId !== person.id ? (
-                        /* Legördülő szelekció dalok listához fűzésére */
                         <select
                           className='p-8 b-radius-5 bg-grey text-color-bg font-bold border-none w-100'
                           value=''
@@ -983,7 +983,6 @@ const AdminDashboard = () => {
                           ))}
                         </select>
                       ) : (
-                        /* Új dal adatbázisba küldése és énekeshez rendelése */
                         <div className='p-8 border-sm border-acc b-radius-5 flex flex-column gap-8 bg-bg mt-4'>
                           <div className='text-sm font-bold text-color-acc'>
                             Új dal felvitele (ha nem létezik):
