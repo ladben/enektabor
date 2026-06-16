@@ -4,14 +4,14 @@ import { Title, Button, Spinner } from '../../components';
 import bcrypt from 'bcryptjs';
 
 const AdminDashboard = () => {
-  const fileInputRefs = useRef({}); // Refs az épp szerkesztett emberek file inputjaihoz
+  const fileInputRefs = useRef({});
   const [competitions, setCompetitions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingComp, setEditingComp] = useState(null);
 
   // Jogosultsági állapotok a belépés módja alapján
-  const adminMode = sessionStorage.getItem('admin_mode') || 'limited'; // 'superadmin' vagy 'limited'
-  const adminUserId = sessionStorage.getItem('admin_user_id'); // A korlátozott admin ID-ja
+  const adminMode = sessionStorage.getItem('admin_mode') || 'limited';
+  const adminUserId = sessionStorage.getItem('admin_user_id');
   const isSuperAdmin = adminMode === 'superadmin';
 
   // ÚJ ÁLLAPOT: Az aktuálisan bejelentkezett szervező/admin neve
@@ -26,6 +26,15 @@ const AdminDashboard = () => {
   const [newCatName, setNewCatName] = useState('');
   const [newCatQuestion, setNewCatQuestion] = useState('');
 
+  // 🌟 ÚJ ÁLLAPOTOK: A két új verseny-szintű kapcsoló
+  const [isVoteForTeammate, setIsVoteForTeammate] = useState(false);
+  const [isAdvancedScoreCalculation, setIsAdvancedScoreCalculation] =
+    useState(false);
+
+  // 🌟 ÚJ ÁLLAPOTOK: Csoportosítás kezelése a kliens oldalon szerkesztés közben
+  const [selectedForGrouping, setSelectedForGrouping] = useState([]); // [personId1, personId2...]
+  const [tempGroupMap, setTempGroupMap] = useState({}); // { [personId]: 'group_12345' }
+
   // Résztvevők állapotai
   const [allPeople, setAllPeople] = useState([]);
   const [compParticipants, setCompParticipants] = useState([]);
@@ -33,7 +42,7 @@ const AdminDashboard = () => {
 
   // Dalok kezeléséhez szükséges állapotok
   const [allSongs, setAllSongs] = useState([]);
-  const [performerSongs, setPerformerSongs] = useState({}); // { [user_id]: [song_id1, song_id2...] }
+  const [performerSongs, setPerformerSongs] = useState({});
   const [newSongArtist, setNewSongArtist] = useState('');
   const [newSongTitle, setNewSongTitle] = useState('');
   const [activeSongAddingUserId, setActiveSongAddingUserId] = useState(null);
@@ -41,44 +50,36 @@ const AdminDashboard = () => {
   useEffect(() => {
     fetchCompetitions();
     fetchGlobalData();
-    fetchAdminName(); // Admin nevének betöltése mountoláskor
+    fetchAdminName();
   }, []);
 
-  // Lekéri az admin nevének stringjét a 'people' táblából
   const fetchAdminName = async () => {
     if (isSuperAdmin) {
       setAdminName('Superadmin');
       return;
     }
-
     if (adminUserId) {
       const { data, error } = await supabase
         .from('people')
         .select('name')
         .eq('id', adminUserId)
         .maybeSingle();
-
-      if (!error && data) {
-        setAdminName(data.name);
-      }
+      if (!error && data) setAdminName(data.name);
     }
   };
 
   const fetchCompetitions = async () => {
     setLoading(true);
-
     let query = supabase
       .from('competitions')
       .select(`*, competition_participants(count)`)
       .order('created_at', { ascending: false });
 
-    // KORLÁTOZÁS: Ha a felhasználó sima admin, csak azokat a versenyeket kérjük le, amikhez hozzá van rendelve
     if (!isSuperAdmin && adminUserId) {
       const { data: allowedComps } = await supabase
         .from('competition_has_admin')
         .select('competition_id')
         .eq('user_id', adminUserId);
-
       const allowedIds = allowedComps?.map((c) => c.competition_id) || [];
       query = query.in('id', allowedIds);
     }
@@ -103,9 +104,8 @@ const AdminDashboard = () => {
 
   // --- Verseny státusz kapcsolók ---
   const handleToggleActive = async (id, currentStatus) => {
-    if (!isSuperAdmin || currentStatus) return; // 🌟 KORLÁTOZÁS: Sima admin nem indíthat/állíthat le aktív állapotot!
+    if (!isSuperAdmin || currentStatus) return;
     setLoading(true);
-
     await supabase
       .from('competitions')
       .update({ is_active: false })
@@ -114,13 +114,11 @@ const AdminDashboard = () => {
       .from('competitions')
       .update({ is_active: true })
       .eq('id', id);
-
     await fetchCompetitions();
   };
 
   const handleToggleVoting = async (id, currentStatus) => {
-    if (!isSuperAdmin) return; // 🌟 KORLÁTOZÁS: Sima admin nem kapcsolhatja a szavazás státuszt ezen a panelen!
-
+    if (!isSuperAdmin) return;
     await supabase
       .from('competitions')
       .update({ voting_started: !currentStatus })
@@ -132,12 +130,19 @@ const AdminDashboard = () => {
   const handleOpenEdit = async (comp) => {
     setPerformerSongs({});
     setActiveSongAddingUserId(null);
+    setSelectedForGrouping([]);
+    setTempGroupMap({});
 
     if (comp) {
       setEditingComp(comp);
       setCompName(comp.name);
       setCompPassword('');
       setTopNumber(comp.top_number);
+
+      setIsVoteForTeammate(comp.is_vote_for_teammate || false);
+      setIsAdvancedScoreCalculation(
+        comp.is_advanced_score_calculation || false,
+      );
 
       const { data: cCats } = await supabase
         .from('competition_has_misc_category')
@@ -153,15 +158,21 @@ const AdminDashboard = () => {
 
       const { data: perfs } = await supabase
         .from('performances')
-        .select('performer_id, song_id')
+        .select('performer_id, song_id, group_id')
         .eq('competition_id', comp.id);
 
       const songMapping = {};
+      const groups = {};
       perfs?.forEach((p) => {
         if (!songMapping[p.performer_id]) songMapping[p.performer_id] = [];
         songMapping[p.performer_id].push(p.song_id);
+
+        if (p.group_id) {
+          groups[p.performer_id] = p.group_id;
+        }
       });
       setPerformerSongs(songMapping);
+      setTempGroupMap(groups);
     } else {
       if (!isSuperAdmin) return;
 
@@ -171,9 +182,13 @@ const AdminDashboard = () => {
       setTopNumber(4);
       setCompCategories([]);
       setCompParticipants([]);
+      setIsVoteForTeammate(false);
+      setIsAdvancedScoreCalculation(false);
 
+      // Keresünk egy korábbi aktív versenyt mintának
       const lastActive = competitions.find((c) => c.is_active);
       if (lastActive) {
+        // 1. Áthozzuk a résztvevőket és a szerepköreiket
         const { data: lastParts } = await supabase
           .from('competition_participants')
           .select('user_id, is_voter, is_jury, is_performer')
@@ -181,17 +196,26 @@ const AdminDashboard = () => {
 
         if (lastParts) setCompParticipants(lastParts);
 
+        // 2. Áthozzuk a dalokat és a csapattagságokat (group_id) is kiindulópontnak!
         const { data: lastPerfs } = await supabase
           .from('performances')
-          .select('performer_id, song_id')
+          .select('performer_id, song_id, group_id')
           .eq('competition_id', lastActive.id);
 
         const songMapping = {};
+        const groups = {};
+
         lastPerfs?.forEach((p) => {
           if (!songMapping[p.performer_id]) songMapping[p.performer_id] = [];
           songMapping[p.performer_id].push(p.song_id);
+
+          if (p.group_id) {
+            groups[p.performer_id] = p.group_id;
+          }
         });
+
         setPerformerSongs(songMapping);
+        setTempGroupMap(groups); // 🌟 Az előző széria csoportjait is betöltjük!
       }
     }
   };
@@ -221,6 +245,41 @@ const AdminDashboard = () => {
     }
   };
 
+  // --- 🌟 ÚJ FUNKCIÓK: CSOPORTOSÍTÁS KLIENS OLDALI INTERFÉSZE 🌟 ---
+  const handleTogglePersonGroupCheckbox = (userId) => {
+    setSelectedForGrouping((prev) =>
+      prev.includes(userId)
+        ? prev.filter((id) => id !== userId)
+        : [...prev, userId],
+    );
+  };
+
+  const handleCreateTeam = () => {
+    if (selectedForGrouping.length < 2) return;
+    const newGroupId = `team_${Date.now()}`;
+
+    setTempGroupMap((prev) => {
+      const copy = { ...prev };
+      selectedForGrouping.forEach((userId) => {
+        copy[userId] = newGroupId;
+      });
+      return copy;
+    });
+    setSelectedForGrouping([]);
+  };
+
+  const handleBreakTeam = (groupId) => {
+    setTempGroupMap((prev) => {
+      const copy = { ...prev };
+      Object.keys(copy).forEach((userId) => {
+        if (copy[userId] === groupId) {
+          delete copy[userId];
+        }
+      });
+      return copy;
+    });
+  };
+
   // --- Felhasználó Kezelés ---
   const toggleParticipantRole = (userId, roleKey) => {
     setCompParticipants((prev) => {
@@ -231,7 +290,6 @@ const AdminDashboard = () => {
         );
       } else {
         if (!isSuperAdmin) return prev;
-
         return [
           ...prev,
           {
@@ -249,6 +307,11 @@ const AdminDashboard = () => {
   const removeParticipant = (userId) => {
     setCompParticipants((prev) => prev.filter((p) => p.user_id !== userId));
     setPerformerSongs((prev) => {
+      const copy = { ...prev };
+      delete copy[userId];
+      return copy;
+    });
+    setTempGroupMap((prev) => {
       const copy = { ...prev };
       delete copy[userId];
       return copy;
@@ -280,10 +343,8 @@ const AdminDashboard = () => {
 
   // --- Profilkép feltöltés és törlés ---
   const handleAvatarUpload = async (userId, file) => {
-    if (!isSuperAdmin) return; // 🌟 KORLÁTOZÁS: Korlátozott adminok kódszinten sem tölthetnek fel képet
-    if (!file) return;
+    if (!isSuperAdmin || !file) return;
     setLoading(true);
-
     try {
       const fileExt = file.name.split('.').pop();
       const fileName = `avatar-user-${userId}.${fileExt}`;
@@ -292,22 +353,17 @@ const AdminDashboard = () => {
       const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(filePath, file, { upsert: true });
-
       if (uploadError) throw uploadError;
 
       const {
         data: { publicUrl },
       } = supabase.storage.from('avatars').getPublicUrl(filePath);
-
       const dynamicUrl = `${publicUrl}?t=${Date.now()}`;
 
-      const { error: updateError } = await supabase
+      await supabase
         .from('people')
         .update({ avatar: dynamicUrl })
         .eq('id', userId);
-
-      if (updateError) throw updateError;
-
       setAllPeople((prev) =>
         prev.map((p) => (p.id === userId ? { ...p, avatar: dynamicUrl } : p)),
       );
@@ -319,22 +375,15 @@ const AdminDashboard = () => {
   };
 
   const handleAvatarDelete = async (userId, currentAvatarUrl) => {
-    if (!isSuperAdmin) return; // 🌟 KORLÁTOZÁS: Korlátozott adminok kódszinten sem törölhetnek képet
-    if (!currentAvatarUrl) return;
+    if (!isSuperAdmin || !currentAvatarUrl) return;
     setLoading(true);
-
     try {
       const cleanUrl = currentAvatarUrl.split('?')[0];
       const urlParts = cleanUrl.split('/');
       const fileName = urlParts[urlParts.length - 1];
 
       await supabase.storage.from('avatars').remove([fileName]);
-      const { error } = await supabase
-        .from('people')
-        .update({ avatar: null })
-        .eq('id', userId);
-
-      if (error) throw error;
+      await supabase.from('people').update({ avatar: null }).eq('id', userId);
       setAllPeople((prev) =>
         prev.map((p) => (p.id === userId ? { ...p, avatar: null } : p)),
       );
@@ -349,12 +398,10 @@ const AdminDashboard = () => {
   const handleAddSongToPerformer = (userId, songId) => {
     if (!songId) return;
     const sId = parseInt(songId, 10);
-
     setPerformerSongs((prev) => {
       const currentList = prev[userId] || [];
-      if (!currentList.includes(sId)) {
+      if (!currentList.includes(sId))
         return { ...prev, [userId]: [...currentList, sId] };
-      }
       return prev;
     });
   };
@@ -368,7 +415,6 @@ const AdminDashboard = () => {
 
   const handleCreateAndAddSong = async (userId) => {
     if (!newSongArtist || !newSongTitle) return;
-
     const { data, error } = await supabase
       .from('songs')
       .insert({ artist: newSongArtist, title: newSongTitle })
@@ -394,9 +440,12 @@ const AdminDashboard = () => {
     setLoading(true);
     let compId = editingComp.id;
 
+    // 🌟 Mentjük a két új beállítást is a payloadba
     const payload = {
       name: compName,
       top_number: topNumber,
+      is_vote_for_teammate: isVoteForTeammate,
+      is_advanced_score_calculation: isAdvancedScoreCalculation,
     };
 
     if (compPassword) {
@@ -442,6 +491,7 @@ const AdminDashboard = () => {
       await supabase.from('competition_participants').insert(partInserts);
     }
 
+    // 🌟 MÓDOSÍTVA: Új csoportosító struktúra mentése az egyéni dalok alá
     await supabase.from('performances').delete().eq('competition_id', compId);
     const performanceInserts = [];
     compParticipants.forEach((p) => {
@@ -456,6 +506,7 @@ const AdminDashboard = () => {
             performer_id: p.user_id,
             song_id: songId,
             selected: false,
+            group_id: tempGroupMap[p.user_id] || null, // 🌟 Itt szinkronizáljuk a kért group_id-t!
           });
         });
       }
@@ -495,6 +546,25 @@ const AdminDashboard = () => {
     });
   }, [filteredPeopleList, compParticipants]);
 
+  // Csoportok vizuális szín-generátora a listához
+  const getGroupColorStyle = (groupId) => {
+    if (!groupId) return {};
+    // Egyszerű hash-alapú szín visszaadás, hogy a csapattagok azonos keretszínt kapjanak
+    const colors = [
+      'var(--color-accent)',
+      '#38bdf8',
+      '#fbbf24',
+      '#34d399',
+      '#f43f5e',
+      '#a855f7',
+    ];
+    const index = parseInt(groupId.replace('team_', ''), 10) % colors.length;
+    return {
+      borderLeft: `6px solid ${colors[index] || 'var(--color-accent)'}`,
+      paddingLeft: '8px',
+    };
+  };
+
   if (loading) return <Spinner />;
 
   // ==========================================
@@ -515,7 +585,6 @@ const AdminDashboard = () => {
                 : `Szervezői Felület: ${adminName}`
             }
           />
-
           {isSuperAdmin && (
             <button
               className='px-16 py-8 bg-acc text-color-bg b-radius-10 font-bold border-none'
@@ -679,6 +748,53 @@ const AdminDashboard = () => {
                   setTopNumber(parseInt(e.target.value, 10) || 0)
                 }
               />
+
+              {/* 🌟 ÚJ REFAKTORÁLT BEÁLLÍTÁSOK PANEL 🌟 */}
+              <div className='mt-20 p-12 border-sm border-grey b-radius-10 flex flex-column gap-12 bg-transparent'>
+                <div className='text-sm font-bold text-color-text mb-4'>
+                  Haladó Szavazási Szabályok:
+                </div>
+
+                <label
+                  className='flex flex-row gap-10 flex-align-center text-sm font-bold'
+                  style={{ cursor: 'pointer' }}
+                >
+                  <input
+                    type='checkbox'
+                    checked={isVoteForTeammate}
+                    onChange={(e) => setIsVoteForTeammate(e.target.checked)}
+                    style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                  />
+                  <div>
+                    <div>Csapattársra lehet szavazni</div>
+                    <div className='text-sm text-color-grey font-normal'>
+                      Ha bekapcsolod, az egy csapatban lévők adhatnak egymásnak
+                      is pontot.
+                    </div>
+                  </div>
+                </label>
+
+                <label
+                  className='flex flex-row gap-10 flex-align-center text-sm font-bold mt-6'
+                  style={{ cursor: 'pointer' }}
+                >
+                  <input
+                    type='checkbox'
+                    checked={isAdvancedScoreCalculation}
+                    onChange={(e) =>
+                      setIsAdvancedScoreCalculation(e.target.checked)
+                    }
+                    style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                  />
+                  <div>
+                    <div>Matematikai hendikep kiegyenlítés</div>
+                    <div className='text-sm text-color-grey font-normal'>
+                      Ha bekapcsolod, a szóló és csoportos előadók pontjait
+                      arányosítod.
+                    </div>
+                  </div>
+                </label>
+              </div>
             </div>
           </div>
 
@@ -713,7 +829,6 @@ const AdminDashboard = () => {
                 </label>
               ))}
             </div>
-
             {isSuperAdmin ? (
               <div className='p-12 border-sm border-text b-radius-10 flex flex-column gap-10'>
                 <div className='text-sm font-bold text-color-acc'>
@@ -756,6 +871,26 @@ const AdminDashboard = () => {
         >
           <h2 className='mb-16 text-color-text'>Résztvevők és Jogosultságok</h2>
 
+          {/* 🌟 ÚJ REFAKTORÁLT CSOPORTOSÍTÓ VEZÉRLŐ BAR 🌟 */}
+          <div className='flex flex-row flex-justify-space-between flex-align-center p-12 bg-transparent border-sm border-grey b-radius-10 mb-16 gap-10'>
+            <div className='text-sm font-bold text-color-white text-left'>
+              Kijelölve csoportosításra:{' '}
+              <span className='text-color-acc'>
+                {selectedForGrouping.length} fő
+              </span>
+            </div>
+            <button
+              className={`px-16 py-6 b-radius-5 border-none font-bold text-sm ${selectedForGrouping.length >= 2 ? 'bg-acc text-color-white' : 'bg-grey text-color-bg opacity-40'}`}
+              style={{
+                cursor: selectedForGrouping.length >= 2 ? 'pointer' : 'default',
+              }}
+              disabled={selectedForGrouping.length < 2}
+              onClick={handleCreateTeam}
+            >
+              🔗 Csoport létrehozása
+            </button>
+          </div>
+
           {isSuperAdmin ? (
             <div className='flex gap-10 mb-16'>
               <input
@@ -791,13 +926,35 @@ const AdminDashboard = () => {
               const isPerformerActive = inComp && part.is_performer;
               const activeSongsForThisUser = performerSongs[person.id] || [];
 
+              // Megnézzük van-e hozzárendelt csoportja
+              const assignedGroupId = tempGroupMap[person.id];
+
               return (
                 <div
                   key={person.id}
                   className={`flex flex-column p-12 b-radius-10 border-sm transition-all gap-10 ${inComp ? 'border-text bg-transparent' : 'border-grey opacity-50'}`}
+                  style={getGroupColorStyle(assignedGroupId)}
                 >
-                  <div className='flex flex-row flex-justify-space-between flex-align-center w-100'>
+                  <div className='flex flex-row flex-wrap gap-12 flex-justify-space-between flex-align-center w-100'>
                     <div className='flex flex-row flex-align-center gap-12 text-left'>
+                      {/* 🌟 KLIENS OLDALI CSOPORT JELÖLŐ CHECKBOX */}
+                      {isPerformerActive && (
+                        <input
+                          type='checkbox'
+                          checked={selectedForGrouping.includes(person.id)}
+                          onChange={() =>
+                            handleTogglePersonGroupCheckbox(person.id)
+                          }
+                          style={{
+                            width: '18px',
+                            height: '18px',
+                            cursor: 'pointer',
+                            accentColor: 'var(--color-accent)',
+                          }}
+                          title='Kijelölés csapatba rendezéshez'
+                        />
+                      )}
+
                       <div
                         className='pos-rel'
                         style={{ width: '50px', height: '50px' }}
@@ -806,7 +963,6 @@ const AdminDashboard = () => {
                           src={person.avatar || '/no_avatar.png'}
                           alt={person.name}
                           className='w-100 h-100 b-radius-10 border-sm border-grey'
-                          // 🌟 KORLÁTOZÁS: Ha sima admin, az avatar nem kattintható, nincs pointer kurzor
                           style={{
                             objectFit: 'cover',
                             cursor: isSuperAdmin ? 'pointer' : 'default',
@@ -819,7 +975,6 @@ const AdminDashboard = () => {
                             fileInputRefs.current[person.id]?.click()
                           }
                         />
-                        {/* 🌟 Csak superadminnak ágyazzuk be a file inputot a biztonság kedvéért */}
                         {isSuperAdmin && (
                           <input
                             type='file'
@@ -833,7 +988,6 @@ const AdminDashboard = () => {
                             }
                           />
                         )}
-                        {/* 🌟 KORLÁTOZÁS: A törlés gomb (✕) csak superadmin esetén renderelődik ki */}
                         {person.avatar && isSuperAdmin && (
                           <div
                             className='pos-abs bg-acc text-color-white flex flex-align-center flex-justify-center font-bold b-radius-40-perc shadow-sm'
@@ -862,11 +1016,30 @@ const AdminDashboard = () => {
                         </div>
                         <div className='text-sm text-color-grey text-left'>
                           {inComp ? 'Hozzáadva' : 'Nincs a versenyben'}
+                          {assignedGroupId && (
+                            <span
+                              className='text-color-acc font-bold ml-6'
+                              style={{ fontSize: '12px' }}
+                            >
+                              [Csoportos]
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
 
                     <div className='flex flex-row gap-8 flex-align-center'>
+                      {/* Ha csoportban van, az admin felületen lehessen bontani a láncot */}
+                      {assignedGroupId && (
+                        <button
+                          className='px-8 py-4 text-sm border-sm border-acc text-color-acc b-radius-5 bg-transparent font-bold mr-6'
+                          style={{ cursor: 'pointer' }}
+                          onClick={() => handleBreakTeam(assignedGroupId)}
+                        >
+                          🔓 Bontás
+                        </button>
+                      )}
+
                       {inComp ? (
                         <>
                           <button
@@ -967,7 +1140,6 @@ const AdminDashboard = () => {
                                       songId,
                                     )
                                   }
-                                  title='Dal levétele az énekesről'
                                 >
                                   ✕
                                 </button>

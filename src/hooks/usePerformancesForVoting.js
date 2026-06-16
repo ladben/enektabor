@@ -18,7 +18,7 @@ export const usePerformancesForVoting = (competitionId, excludePerformerId) => {
       const { data, error } = await supabase
         .from('performances')
         .select(
-          'id, performer_id, selected, songs(title, artist), people(name, avatar)',
+          'id, performer_id, selected, songs(title, artist), people(name, avatar), group_id',
         )
         .eq('competition_id', competitionId)
         .neq('performer_id', excludePerformerId); // Kept to exclude self safely

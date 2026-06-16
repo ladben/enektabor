@@ -12,6 +12,7 @@ import {
   SelectPerformersStep,
   VoteMiscStep,
 } from './steps';
+import { supabase } from '../../lib/supabaseClient'; // 🌟 Supabase kliens hozzáadva a közvetlen lekérdezéshez
 
 // 12-hour shelf-life duration setup (matching your user context duration token)
 const SESSION_DURATION_MS = 1000 * 60 * 60 * 12;
@@ -66,6 +67,10 @@ const Vote = () => {
     return getInitialValueWithExpiry(SEEN_REVIEW_KEY, false);
   });
 
+  // 🌟 ÚJ ÁLLAPOT: A bejelentkezett felhasználó saját csapat-azonosítója
+  const [voterGroupId, setVoterGroupId] = useState(null);
+  const [voterGroupLoading, setVoterGroupLoading] = useState(true);
+
   const { submitVote } = useSubmitVote();
   const { data: performances = [], isLoading: perfLoading } =
     usePerformancesForVoting(competitionId, userId);
@@ -74,23 +79,59 @@ const Vote = () => {
   const { data: competition } = useActiveCompetition();
   const topNumber = competition?.top_number;
 
-  // 🌟 JAVÍTÁS: Kiszűrjük a listából a felesleges, nem kiválasztott dalokat.
-  // Csak az a teljesítmény (performance) mehet a szavazólapra, amit az énekes kiválasztott!
+  // 🌟 ÚJ EFFECT: Mivel a hook kiszűri a szavazót, közvetlenül a DB-ből kérjük le a saját group_id-ját
+  useEffect(() => {
+    const fetchVoterGroupId = async () => {
+      if (!competitionId || !userId) {
+        setVoterGroupLoading(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('performances')
+        .select('group_id')
+        .eq('competition_id', competitionId)
+        .eq('performer_id', userId)
+        .limit(1)
+        .maybeSingle();
+
+      if (!error && data) {
+        setVoterGroupId(data.group_id);
+      }
+      setVoterGroupLoading(false);
+    };
+
+    fetchVoterGroupId();
+  }, [competitionId, userId]);
+
+  // 🌟 REFAKTORÁLT SZŰRÉS: Biztonságosan használja a külön lekért voterGroupId-t
   const activePerformances = useMemo(() => {
-    const filtered = performances.filter((p) => p.selected && p.songs);
+    let filtered = performances.filter((p) => p.selected && p.songs);
+
+    // Ha a csapattársakra tilos szavazni, és van érvényes csoportja a szavazónak, kiszűrjük őket
+    if (
+      competition &&
+      competition.is_vote_for_teammate === false &&
+      voterGroupId
+    ) {
+      console.log('We are filtering. voterGroupId: ', voterGroupId);
+      filtered = filtered.filter((p) => p.group_id !== voterGroupId);
+    }
+
+    console.log('This is the filtered: ', filtered);
 
     return filtered.sort((a, b) => {
       const nameA = a.people?.name || '';
       const nameB = b.people?.name || '';
       return nameA.localeCompare(nameB, 'hu');
     });
-  }, [performances]);
+  }, [performances, competition, voterGroupId]);
 
   const reviewStepIndex = 2 + (miscCategories?.length || 0);
 
   // Restore Swiper Position on Mount
   useEffect(() => {
-    if (!perfLoading && seqRef.current) {
+    if (!perfLoading && !voterGroupLoading && seqRef.current) {
       const savedStep = getInitialValueWithExpiry(STEP_KEY, null);
       if (savedStep !== null) {
         setTimeout(() => {
@@ -98,7 +139,7 @@ const Vote = () => {
         }, 100);
       }
     }
-  }, [perfLoading]);
+  }, [perfLoading, voterGroupLoading]);
 
   // AUTO-SAVE EFFECT
   useEffect(() => {
@@ -144,7 +185,8 @@ const Vote = () => {
     });
   }, [selectedPerformers, userId]);
 
-  if (!user || perfLoading) return <Spinner />;
+  // 🌟 A spinnert addig mutatjuk, amíg a saját csoportadat is megérkezik
+  if (!user || perfLoading || voterGroupLoading) return <Spinner />;
 
   const handleSlideChange = (swiper) => {
     if (!userId) return;
@@ -193,7 +235,6 @@ const Vote = () => {
       {/* Step 1: Select top performers */}
       {topNumber > 0 && (
         <div className='flex flex-column gap-24 flex-align-center h-100 ofy-hidden w-100'>
-          {/* 🌟 MÓDOSÍTVA: performances helyett activePerformances-t kap */}
           <SelectPerformersStep
             performances={activePerformances}
             max={topNumber}
@@ -210,7 +251,6 @@ const Vote = () => {
       {/* Step 2: Rank Selected Performers */}
       {topNumber > 0 && (
         <div className='flex flex-column gap-24 flex-align-center h-100 ofy-hidden w-100'>
-          {/* 🌟 MÓDOSÍTVA: performances helyett activePerformances-t kap */}
           <RankPerformersStep
             performances={activePerformances}
             performers={selectedPerformers}
@@ -236,7 +276,6 @@ const Vote = () => {
           key={cat.id}
           className='flex flex-column gap-24 flex-align-center h-100 ofy-hidden w-100'
         >
-          {/* 🌟 MÓDOSÍTVA: performances helyett activePerformances-t kap */}
           <VoteMiscStep
             category={cat}
             performances={activePerformances}
@@ -246,6 +285,7 @@ const Vote = () => {
             onSelect={(id) =>
               setMiscVotes((prev) => ({ ...prev, [cat.id]: id }))
             }
+            // Fix: slideNext() hívása, hogy lépjen a következő vegyes kategóriára vagy a review-ra
             onConfirm={() => seqRef.current?.slideNext()}
             onBack={() => seqRef.current?.slidePrev()}
             userId={userId}
@@ -255,7 +295,6 @@ const Vote = () => {
 
       {/* Step 4: Final Review Summary Page */}
       <div className='flex flex-column gap-24 flex-align-center h-100 ofy-hidden w-100'>
-        {/* 🌟 MÓDOSÍTVA: performances helyett activePerformances-t kap */}
         <ReviewVoteStep
           rankings={rankingEntries}
           miscVotes={miscVotes}

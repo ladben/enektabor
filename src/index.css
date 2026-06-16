@@ -46,6 +46,11 @@ h2 {
   line-height: 30px;
 }
 
+.text-xs {
+  font-size: 10px;
+  line-height: 10px;
+}
+
 .text-sm {
   font-size: 12px;
   line-height: 14px;
@@ -318,6 +323,10 @@ h2 {
 }
 .mb-64 {
   margin-bottom: 64px;
+}
+
+.ml-6 {
+  margin-left: 6px;
 }
 
 /* SIZING */

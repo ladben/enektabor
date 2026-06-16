@@ -14,7 +14,18 @@ const Results = () => {
   const { user } = useUser();
   const { data: competition } = useActiveCompetition();
   const competitionId = user?.competition_id;
-  const { data, error, refetch } = useVoteBreakdown(competitionId);
+
+  // Kivesszük a verseny konfigurációs változóit a skálázáshoz
+  const topNumber = competition?.top_number || 0;
+  const isAdvanced = competition?.is_advanced_score_calculation || false;
+
+  // 🌟 MÓDOSÍTVA: Átadjuk az isAdvanced flag-et és a topNumber súlyozási értéket is a hooknak
+  const { data, error, refetch } = useVoteBreakdown(
+    competitionId,
+    isAdvanced,
+    topNumber,
+  );
+
   const { data: performances = [] } = usePerformancesForVoting(
     competitionId,
     -1,
@@ -98,6 +109,9 @@ const Results = () => {
       const { performance_id, category_value, vote_count } = entry;
       const rank = parseInt(category_value);
 
+      // Beolvassuk a pontszámot tizedestörtként (advanced mód miatt fontos)
+      const parsedVoteCount = parseFloat(vote_count);
+
       if (!performerMap.has(performance_id)) {
         const perf = performances.find((p) => p.id === performance_id);
         performerMap.set(performance_id, {
@@ -110,8 +124,17 @@ const Results = () => {
       }
 
       const performer = performerMap.get(performance_id);
-      performer.rankings[rank - 1] = vote_count;
-      performer.score += (topNumber - rank + 1) * vote_count;
+      performer.rankings[rank - 1] = parsedVoteCount;
+
+      // 🌟 MÓDOSÍTVA: Hendikep-kompenzáció alapú pont-összegzés
+      if (isAdvanced) {
+        // Advanced módban a Supabase már a kész, arányosított súlyozott pontot küldte,
+        // így a frontendnek már NEM szabad újra felszoroznia helyezésekkel, csak hozzáadni!
+        performer.score += parsedVoteCount;
+      } else {
+        // Hagyományos módban a megszokott módon a darabszámot szorozzuk fel a helyezés súlyával
+        performer.score += (topNumber - rank + 1) * parsedVoteCount;
+      }
     }
 
     const rankingArray = Array.from(performerMap.values());
@@ -142,7 +165,9 @@ const Results = () => {
 
       const category = entry.category_value;
       const perfId = entry.performance_id;
-      const voteCount = entry.vote_count;
+
+      // Beolvassuk a különdíj szavazat arányát is tizedestörtként
+      const voteCount = parseFloat(entry.vote_count);
 
       if (!groupedByCategory[category]) {
         groupedByCategory[category] = {
@@ -226,6 +251,13 @@ const Results = () => {
   // Check if a toplista calculation is active for this gala
   const hasToplist = competition?.top_number > 0;
 
+  // 🌟 DYNAMIC FORMATTER: Ha a végeredmény kerek egész pont (pl. 12), tisztán írja ki.
+  // Ha Advanced módban tört pontszám keletkezik (pl. 14.333), szépen kerekíti 2 tizedesjegyre (14.33).
+  const formatScoreDisplay = (scoreValue) => {
+    if (scoreValue % 1 === 0) return scoreValue;
+    return scoreValue.toFixed(2);
+  };
+
   return (
     <>
       <Swiper
@@ -251,7 +283,8 @@ const Results = () => {
                         imgName: standing.name,
                       }}
                       name={standing.name}
-                      score={standing.score}
+                      // 🌟 MÓDOSÍTVA: Alkalmazzuk a kerekítést a kijelzésnél
+                      score={formatScoreDisplay(standing.score)}
                       rankings={standing.rankings}
                     />
                   ))}
@@ -273,7 +306,8 @@ const Results = () => {
                       key={index}
                       avatar={{ imgSrc: vote.imgSrc, imgName: vote.name }}
                       name={vote.name}
-                      score={vote.score}
+                      // 🌟 MÓDOSÍTVA: Alkalmazzuk a kerekítést a különdíjaknál is
+                      score={formatScoreDisplay(vote.score)}
                     />
                   ))}
                 </div>
