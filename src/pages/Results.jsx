@@ -104,7 +104,6 @@ const Results = () => {
       return [];
     }
 
-    // 1. Megszámoljuk a csapatok létszámait a performances tábla alapján a visszaszámoláshoz
     const teamSizes = {};
     performances.forEach((p) => {
       if (p.group_id) {
@@ -129,7 +128,6 @@ const Results = () => {
           name: perf?.people?.name || '',
           score: 0,
           rankings: Array(topNumber).fill(0),
-          // Eltároljuk a fellépő konkrét performance rekordját a csoport-adatokhoz
           rawPerf: perf,
         });
       }
@@ -137,16 +135,12 @@ const Results = () => {
       const performer = performerMap.get(performance_id);
 
       if (isAdvanced) {
-        // A: A pontszámot közvetlenül hozzáadjuk, ahogy eddig is (ez már tökéletes volt)
         performer.score += parsedVoteCount;
 
-        // B: 🌟 TŰPONTOS DARABSZÁM VISSZASZÁMÍTÁS 🌟
-        // Kiszámoljuk, mennyi volt a lehetséges szavazók száma (N_eligible) ennél a fellépőnél
         const groupId = performer.rawPerf?.group_id;
         const teamSize = groupId ? teamSizes[groupId] || 1 : 1;
-        const eligibleCount = totalVoters - teamSize; // totalVoters elérhető a komponens scope-jából!
+        const eligibleCount = totalVoters - teamSize;
 
-        // Visszaforgatjuk a képletet: (pont * N_eligible) / súly
         if (eligibleCount > 0 && rankWeight > 0) {
           performer.rankings[rank - 1] = Math.round(
             (parsedVoteCount * eligibleCount) / rankWeight,
@@ -155,13 +149,28 @@ const Results = () => {
           performer.rankings[rank - 1] = 0;
         }
       } else {
-        // Hagyományos mód (marad a régi, jól működő logika)
         performer.score += rankWeight * parsedVoteCount;
         performer.rankings[rank - 1] = parsedVoteCount;
       }
     }
 
-    const rankingArray = Array.from(performerMap.values());
+    let rankingArray = Array.from(performerMap.values());
+
+    // 🌟 MÓDOSÍTVA: Skálázás a valós elméleti maximumra 🌟
+    if (isAdvanced && rankingArray.length > 0) {
+      const maxScore = Math.max(...rankingArray.map((p) => p.score));
+
+      // Kiszámoljuk a hagyományos világ elméleti maximumát: (Összes szavazó - 1) * top_number
+      const maxPossibleScore = (totalVoters - 1) * topNumber;
+
+      if (maxScore > 0 && maxPossibleScore > 0) {
+        rankingArray = rankingArray.map((performer) => ({
+          ...performer,
+          // (Saját advanced pont / Legmagasabb advanced pont) * Elméleti max pontszám
+          score: Math.round((performer.score / maxScore) * maxPossibleScore),
+        }));
+      }
+    }
 
     rankingArray.sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score;
@@ -189,8 +198,6 @@ const Results = () => {
 
       const category = entry.category_value;
       const perfId = entry.performance_id;
-
-      // Beolvassuk a különdíj szavazat arányát is tizedestörtként
       const voteCount = parseFloat(entry.vote_count);
 
       if (!groupedByCategory[category]) {
@@ -210,11 +217,36 @@ const Results = () => {
           score: voteCount,
         });
       }
-
-      groupedByCategory[category].votes.sort((a, b) => b.score - a.score);
     }
 
-    return Object.values(groupedByCategory);
+    const processedCategories = Object.values(groupedByCategory);
+
+    // 🌟 MÓDOSÍTVA: Különdíjak skálázása a valós elméleti maximumra 🌟
+    if (isAdvanced) {
+      processedCategories.forEach((cat) => {
+        if (cat.votes.length > 0) {
+          const maxMiscScore = Math.max(...cat.votes.map((v) => v.score));
+
+          // Különdíjnál a megszerezhető max pontszám egy szólónak: Összes szavazó - 1
+          const maxPossibleMiscScore = totalVoters - 1;
+
+          if (maxMiscScore > 0 && maxPossibleMiscScore > 0) {
+            cat.votes = cat.votes.map((vote) => ({
+              ...vote,
+              score: Math.round(
+                (vote.score / maxMiscScore) * maxPossibleMiscScore,
+              ),
+            }));
+          }
+        }
+      });
+    }
+
+    processedCategories.forEach((cat) => {
+      cat.votes.sort((a, b) => b.score - a.score);
+    });
+
+    return processedCategories;
   };
 
   // --- DYNAMIC REAL-TIME WAITING SCREEN BRANCH ---
