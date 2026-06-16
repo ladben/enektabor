@@ -103,14 +103,23 @@ const Results = () => {
     if (!rankings || !performances || !topNumber) {
       return [];
     }
+
+    // 1. Megszámoljuk a csapatok létszámait a performances tábla alapján a visszaszámoláshoz
+    const teamSizes = {};
+    performances.forEach((p) => {
+      if (p.group_id) {
+        teamSizes[p.group_id] = (teamSizes[p.group_id] || 0) + 1;
+      }
+    });
+
     const performerMap = new Map();
 
     for (let entry of rankings) {
       const { performance_id, category_value, vote_count } = entry;
       const rank = parseInt(category_value);
-
-      // Beolvassuk a pontszámot tizedestörtként (advanced mód miatt fontos)
       const parsedVoteCount = parseFloat(vote_count);
+
+      const rankWeight = topNumber - rank + 1;
 
       if (!performerMap.has(performance_id)) {
         const perf = performances.find((p) => p.id === performance_id);
@@ -120,20 +129,35 @@ const Results = () => {
           name: perf?.people?.name || '',
           score: 0,
           rankings: Array(topNumber).fill(0),
+          // Eltároljuk a fellépő konkrét performance rekordját a csoport-adatokhoz
+          rawPerf: perf,
         });
       }
 
       const performer = performerMap.get(performance_id);
-      performer.rankings[rank - 1] = parsedVoteCount;
 
-      // 🌟 MÓDOSÍTVA: Hendikep-kompenzáció alapú pont-összegzés
       if (isAdvanced) {
-        // Advanced módban a Supabase már a kész, arányosított súlyozott pontot küldte,
-        // így a frontendnek már NEM szabad újra felszoroznia helyezésekkel, csak hozzáadni!
+        // A: A pontszámot közvetlenül hozzáadjuk, ahogy eddig is (ez már tökéletes volt)
         performer.score += parsedVoteCount;
+
+        // B: 🌟 TŰPONTOS DARABSZÁM VISSZASZÁMÍTÁS 🌟
+        // Kiszámoljuk, mennyi volt a lehetséges szavazók száma (N_eligible) ennél a fellépőnél
+        const groupId = performer.rawPerf?.group_id;
+        const teamSize = groupId ? teamSizes[groupId] || 1 : 1;
+        const eligibleCount = totalVoters - teamSize; // totalVoters elérhető a komponens scope-jából!
+
+        // Visszaforgatjuk a képletet: (pont * N_eligible) / súly
+        if (eligibleCount > 0 && rankWeight > 0) {
+          performer.rankings[rank - 1] = Math.round(
+            (parsedVoteCount * eligibleCount) / rankWeight,
+          );
+        } else {
+          performer.rankings[rank - 1] = 0;
+        }
       } else {
-        // Hagyományos módban a megszokott módon a darabszámot szorozzuk fel a helyezés súlyával
-        performer.score += (topNumber - rank + 1) * parsedVoteCount;
+        // Hagyományos mód (marad a régi, jól működő logika)
+        performer.score += rankWeight * parsedVoteCount;
+        performer.rankings[rank - 1] = parsedVoteCount;
       }
     }
 
