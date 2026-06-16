@@ -789,8 +789,8 @@ const AdminDashboard = () => {
                   <div>
                     <div>Matematikai hendikep kiegyenlítés</div>
                     <div className='text-sm text-color-grey font-normal'>
-                      Ha bekapcsolod, a szóló és csoportos előadók pontjait
-                      arányosítod.
+                      Ha bekapcsolod, a csoportos előadók hátrányát egy komplex
+                      számítás kiküszöböli.
                     </div>
                   </div>
                 </label>
@@ -858,7 +858,7 @@ const AdminDashboard = () => {
               </div>
             ) : (
               <div className='text-center text-sm text-color-grey italic p-12 border-sm border-grey b-radius-10'>
-                Új Kategória létrehozásához fordulj a Bencéhez.
+                Új Kategória létrehozásához fordulj Bencéhez.
               </div>
             )}
           </div>
