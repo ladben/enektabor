@@ -1,18 +1,47 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { Title, Button, Spinner } from '../../components';
-import { useNavigate } from 'react-router-dom'; // 🌟 HOZZÁADVA: Router navigáció az átirányításhoz
+import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion'; // 🌟 Biztosítva a kapcsolók animációjához
 import bcrypt from 'bcryptjs';
 
+// --- 🌟 ANIMÁLT TOGGLE/SWITCH KOMPONENS ---
+const ToggleSwitch = ({ checked, onChange }) => {
+  return (
+    <div
+      className={`flex flex-align-center b-radius-20 p-4 ${checked ? 'bg-acc' : 'bg-grey'}`}
+      style={{
+        width: '54px',
+        height: '28px',
+        cursor: 'pointer',
+        transition: 'background-color 0.2s ease',
+        minWidth: '54px',
+      }}
+      onClick={() => onChange(!checked)}
+    >
+      <motion.div
+        className='b-radius-40-perc bg-bg'
+        style={{
+          width: '20px',
+          height: '20px',
+          boxShadow: '0 2px 5px rgba(0,0,0,0.3)',
+        }}
+        animate={{ x: checked ? 26 : 0 }}
+        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+      />
+    </div>
+  );
+};
+
 const AdminDashboard = () => {
-  const navigate = useNavigate(); // 🌟 HOZZÁADVA
+  const navigate = useNavigate();
   const fileInputRefs = useRef({});
   const [competitions, setCompetitions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingComp, setEditingComp] = useState(null);
 
   // Jogosultsági állapotok a belépés módja alapján
-  const adminMode = sessionStorage.getItem('admin_mode'); // 🌟 MÓDOSÍTVA: Kivettük a || 'limited' fallback-et, hogy ellenőrizhető legyen a tiszta hiány
+  const adminMode = sessionStorage.getItem('admin_mode');
   const adminUserId = sessionStorage.getItem('admin_user_id');
   const isSuperAdmin = adminMode === 'superadmin';
 
@@ -49,19 +78,17 @@ const AdminDashboard = () => {
   const [newSongTitle, setNewSongTitle] = useState('');
   const [activeSongAddingUserId, setActiveSongAddingUserId] = useState(null);
 
-  // 🌟 MÓDOSÍTVA: Biztonsági kapu és adatletöltés szinkronizálása
+  // Biztonsági kapu és adatletöltés szinkronizálása
   useEffect(() => {
-    // 1. Ha az admin_mode teljesen hiányzik (nem jelentkezett be az admin jelszóval), azonnal visszadobjuk
     if (!adminMode) {
       navigate('/', { replace: true });
       return;
     }
 
-    // 2. Ha érvényes a munkamenet, csak akkor engedjük elindulni a hálózati kéréseket
     fetchCompetitions();
     fetchGlobalData();
     fetchAdminName();
-  }, [adminMode, navigate]); // 🌟 Figyeli a változásokat
+  }, [adminMode, navigate]);
 
   const fetchAdminName = async () => {
     if (isSuperAdmin) {
@@ -166,7 +193,7 @@ const AdminDashboard = () => {
         .eq('competition_id', comp.id);
       setCompParticipants(cParts || []);
 
-      const { data: perfs } = await supabase
+      const { data: perfs = [] } = await supabase
         .from('performances')
         .select('performer_id, song_id, group_id')
         .eq('competition_id', comp.id);
@@ -195,10 +222,8 @@ const AdminDashboard = () => {
       setIsVoteForTeammate(false);
       setIsAdvancedScoreCalculation(false);
 
-      // Keresünk egy korábbi aktív versenyt mintának
       const lastActive = competitions.find((c) => c.is_active);
       if (lastActive) {
-        // 1. Áthozzuk a résztvevőket és a szerepköreiket
         const { data: lastParts } = await supabase
           .from('competition_participants')
           .select('user_id, is_voter, is_jury, is_performer')
@@ -206,7 +231,6 @@ const AdminDashboard = () => {
 
         if (lastParts) setCompParticipants(lastParts);
 
-        // 2. Áthozzuk a dalokat és a csapattagságokat (group_id) is kiindulópontnak!
         const { data: lastPerfs } = await supabase
           .from('performances')
           .select('performer_id, song_id, group_id')
@@ -225,7 +249,7 @@ const AdminDashboard = () => {
         });
 
         setPerformerSongs(songMapping);
-        setTempGroupMap(groups); // 🌟 Az előző széria csoportjait is betöltjük!
+        setTempGroupMap(groups);
       }
     }
   };
@@ -255,7 +279,7 @@ const AdminDashboard = () => {
     }
   };
 
-  // --- 🌟 ÚJ FUNKCIÓK: CSOPORTOSÍTÁS KLIENS OLDALI INTERFÉSZE 🌟 ---
+  // --- CSOPORTOSÍTÁS LOGIKA ---
   const handleTogglePersonGroupCheckbox = (userId) => {
     setSelectedForGrouping((prev) =>
       prev.includes(userId)
@@ -450,7 +474,6 @@ const AdminDashboard = () => {
     setLoading(true);
     let compId = editingComp.id;
 
-    // 🌟 Mentjük a két új beállítást is a payloadba
     const payload = {
       name: compName,
       top_number: topNumber,
@@ -501,7 +524,6 @@ const AdminDashboard = () => {
       await supabase.from('competition_participants').insert(partInserts);
     }
 
-    // 🌟 MÓDOSÍTVA: Új csoportosító struktúra mentése az egyéni dalok alá
     await supabase.from('performances').delete().eq('competition_id', compId);
     const performanceInserts = [];
     compParticipants.forEach((p) => {
@@ -516,7 +538,7 @@ const AdminDashboard = () => {
             performer_id: p.user_id,
             song_id: songId,
             selected: false,
-            group_id: tempGroupMap[p.user_id] || null, // 🌟 Itt szinkronizáljuk a kért group_id-t!
+            group_id: tempGroupMap[p.user_id] || null,
           });
         });
       }
@@ -530,7 +552,6 @@ const AdminDashboard = () => {
     fetchCompetitions();
   };
 
-  // Rendező szűrések és ábécé sorrendek
   const sortedCategories = useMemo(() => {
     return [...allMiscCategories].sort((a, b) => {
       const inCompA = compCategories.includes(a.id) ? 1 : 0;
@@ -556,10 +577,8 @@ const AdminDashboard = () => {
     });
   }, [filteredPeopleList, compParticipants]);
 
-  // Csoportok vizuális szín-generátora a listához
   const getGroupColorStyle = (groupId) => {
     if (!groupId) return {};
-    // Egyszerű hash-alapú szín visszaadás, hogy a csapattagok azonos keretszínt kapjanak
     const colors = [
       'var(--color-accent)',
       '#38bdf8',
@@ -759,51 +778,45 @@ const AdminDashboard = () => {
                 }
               />
 
-              {/* 🌟 ÚJ REFAKTORÁLT BEÁLLÍTÁSOK PANEL 🌟 */}
-              <div className='mt-20 p-12 border-sm border-grey b-radius-10 flex flex-column gap-12 bg-transparent'>
+              {/* 🌟 MÓDOSÍTVA: ÚJ ANIMÁLT VEZÉRLŐ PANEL TOGGLE SWITCH-EL 🌟 */}
+              <div className='mt-20 p-16 border-sm border-grey b-radius-10 flex flex-column gap-16 bg-transparent'>
                 <div className='text-sm font-bold text-color-text mb-4'>
                   Haladó Szavazási Szabályok:
                 </div>
 
-                <label
-                  className='flex flex-row gap-10 flex-align-center text-sm font-bold'
-                  style={{ cursor: 'pointer' }}
-                >
-                  <input
-                    type='checkbox'
+                {/* Csapattárs Toggle */}
+                <div className='flex flex-row flex-justify-space-between flex-align-center gap-16'>
+                  <ToggleSwitch
                     checked={isVoteForTeammate}
-                    onChange={(e) => setIsVoteForTeammate(e.target.checked)}
-                    style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                    onChange={setIsVoteForTeammate}
                   />
-                  <div>
-                    <div>Csapattársra lehet szavazni</div>
-                    <div className='text-sm text-color-grey font-normal'>
+                  <div className='text-left'>
+                    <div className='font-bold text-sm text-color-white text-left'>
+                      Csapattársra lehet szavazni
+                    </div>
+                    <div className='text-sm text-color-grey font-normal mt-2 text-left'>
                       Ha bekapcsolod, az egy csapatban lévők adhatnak egymásnak
                       is pontot.
                     </div>
                   </div>
-                </label>
+                </div>
 
-                <label
-                  className='flex flex-row gap-10 flex-align-center text-sm font-bold mt-6'
-                  style={{ cursor: 'pointer' }}
-                >
-                  <input
-                    type='checkbox'
+                {/* Advanced Matematika Toggle */}
+                <div className='flex flex-row flex-justify-space-between flex-align-center gap-16 mt-4'>
+                  <ToggleSwitch
                     checked={isAdvancedScoreCalculation}
-                    onChange={(e) =>
-                      setIsAdvancedScoreCalculation(e.target.checked)
-                    }
-                    style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                    onChange={setIsAdvancedScoreCalculation}
                   />
-                  <div>
-                    <div>Matematikai hendikep kiegyenlítés</div>
-                    <div className='text-sm text-color-grey font-normal'>
+                  <div className='text-left'>
+                    <div className='font-bold text-sm text-color-white text-left'>
+                      Matematikai hendikep kiegyenlítés
+                    </div>
+                    <div className='text-sm text-color-grey font-normal mt-2 text-left'>
                       Ha bekapcsolod, a csoportos előadók hátrányát egy komplex
                       számítás kiküszöböli.
                     </div>
                   </div>
-                </label>
+                </div>
               </div>
             </div>
           </div>
@@ -881,7 +894,6 @@ const AdminDashboard = () => {
         >
           <h2 className='mb-16 text-color-text'>Résztvevők és Jogosultságok</h2>
 
-          {/* 🌟 ÚJ REFAKTORÁLT CSOPORTOSÍTÓ VEZÉRLŐ BAR 🌟 */}
           <div className='flex flex-row flex-justify-space-between flex-align-center p-12 bg-transparent border-sm border-grey b-radius-10 mb-16 gap-10'>
             <div className='text-sm font-bold text-color-white text-left'>
               Kijelölve csoportosításra:{' '}
@@ -936,7 +948,6 @@ const AdminDashboard = () => {
               const isPerformerActive = inComp && part.is_performer;
               const activeSongsForThisUser = performerSongs[person.id] || [];
 
-              // Megnézzük van-e hozzárendelt csoportja
               const assignedGroupId = tempGroupMap[person.id];
 
               return (
@@ -947,7 +958,6 @@ const AdminDashboard = () => {
                 >
                   <div className='flex flex-row flex-wrap gap-12 flex-justify-space-between flex-align-center w-100'>
                     <div className='flex flex-row flex-align-center gap-12 text-left'>
-                      {/* 🌟 KLIENS OLDALI CSOPORT JELÖLŐ CHECKBOX */}
                       {isPerformerActive && (
                         <input
                           type='checkbox'
@@ -1039,7 +1049,6 @@ const AdminDashboard = () => {
                     </div>
 
                     <div className='flex flex-row gap-8 flex-align-center'>
-                      {/* Ha csoportban van, az admin felületen lehessen bontani a láncot */}
                       {assignedGroupId && (
                         <button
                           className='px-8 py-4 text-sm border-sm border-acc text-color-acc b-radius-5 bg-transparent font-bold mr-6'

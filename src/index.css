@@ -306,8 +306,16 @@ h2 {
   margin: auto;
 }
 
+.mt-2 {
+  margin-top: 2px;
+}
+
 .mt-4 {
   margin-top: 4px;
+}
+
+.mt-20 {
+  margin-top: 20px;
 }
 
 .mb-16 {
