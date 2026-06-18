@@ -5,19 +5,20 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion'; // 🌟 Biztosítva a kapcsolók animációjához
 import bcrypt from 'bcryptjs';
 
-// --- 🌟 ANIMÁLT TOGGLE/SWITCH KOMPONENS ---
-const ToggleSwitch = ({ checked, onChange }) => {
+// --- 🌟 ANIMÁLT TOGGLE/SWITCH KOMPONENS (Letiltás támogatással) ---
+const ToggleSwitch = ({ checked, onChange, disabled }) => {
   return (
     <div
-      className={`flex flex-align-center b-radius-20 p-4 ${checked ? 'bg-acc' : 'bg-grey'}`}
+      className={`flex flex-align-center b-radius-20 p-4 transition-all ${
+        disabled ? 'bg-grey opacity-40' : checked ? 'bg-acc' : 'bg-grey'
+      }`}
       style={{
         width: '54px',
         height: '28px',
-        cursor: 'pointer',
-        transition: 'background-color 0.2s ease',
+        cursor: disabled ? 'not-allowed' : 'pointer',
         minWidth: '54px',
       }}
-      onClick={() => onChange(!checked)}
+      onClick={() => !disabled && onChange(!checked)}
     >
       <motion.div
         className='b-radius-40-perc bg-bg'
@@ -26,7 +27,7 @@ const ToggleSwitch = ({ checked, onChange }) => {
           height: '20px',
           boxShadow: '0 2px 5px rgba(0,0,0,0.3)',
         }}
-        animate={{ x: checked ? 26 : 0 }}
+        animate={{ x: checked && !disabled ? 26 : 0 }}
         transition={{ type: 'spring', stiffness: 500, damping: 30 }}
       />
     </div>
@@ -89,6 +90,13 @@ const AdminDashboard = () => {
     fetchGlobalData();
     fetchAdminName();
   }, [adminMode, navigate]);
+
+  // 🌟 AUTOMATIKUS LOGIKA: Ha be van kapcsolva a csapattársra szavazás, a hendikep számítás kötelezően false
+  useEffect(() => {
+    if (isVoteForTeammate) {
+      setIsAdvancedScoreCalculation(false);
+    }
+  }, [isVoteForTeammate]);
 
   const fetchAdminName = async () => {
     if (isSuperAdmin) {
@@ -778,46 +786,52 @@ const AdminDashboard = () => {
                 }
               />
 
-              {/* 🌟 MÓDOSÍTVA: ÚJ ANIMÁLT VEZÉRLŐ PANEL TOGGLE SWITCH-EL 🌟 */}
-              <div className='mt-20 p-16 border-sm border-grey b-radius-10 flex flex-column gap-16 bg-transparent'>
-                <div className='text-sm font-bold text-color-text mb-4'>
-                  Haladó Szavazási Szabályok:
-                </div>
+              {/* 🌟 MÓDOSÍTVA: FELTÉTELES PANEL (Csak akkor látható, ha van mentett csoport az előadók között) 🌟 */}
+              {Object.keys(tempGroupMap).length > 0 && (
+                <div className='mt-20 p-16 border-sm border-grey b-radius-10 flex flex-column gap-16 bg-transparent'>
+                  <div className='text-sm font-bold text-color-text mb-4'>
+                    Haladó Szavazási Szabályok:
+                  </div>
 
-                {/* Csapattárs Toggle */}
-                <div className='flex flex-row flex-justify-space-between flex-align-center gap-16'>
-                  <ToggleSwitch
-                    checked={isVoteForTeammate}
-                    onChange={setIsVoteForTeammate}
-                  />
-                  <div className='text-left'>
-                    <div className='font-bold text-sm text-color-white text-left'>
-                      Csapattársra lehet szavazni
+                  {/* Csapattárs Toggle */}
+                  <div className='flex flex-row flex-justify-space-between flex-align-center gap-16'>
+                    <ToggleSwitch
+                      checked={isVoteForTeammate}
+                      onChange={setIsVoteForTeammate}
+                    />
+                    <div className='text-left w-100'>
+                      <div className='font-bold text-sm text-color-white text-left'>
+                        Csapattársra lehet szavazni
+                      </div>
+                      <div className='text-sm text-color-grey font-normal mt-2 text-left'>
+                        Ha bekapcsolod, az egy csapatban lévők adhatnak
+                        egymásnak is pontot.
+                      </div>
                     </div>
-                    <div className='text-sm text-color-grey font-normal mt-2 text-left'>
-                      Ha bekapcsolod, az egy csapatban lévők adhatnak egymásnak
-                      is pontot.
+                  </div>
+
+                  {/* Advanced Matematika Toggle (Letiltva és szürkítve, ha a csapattárs szavazás aktív) */}
+                  <div
+                    className={`flex flex-row flex-justify-space-between flex-align-center gap-16 mt-4 transition-all ${isVoteForTeammate ? 'opacity-40' : ''}`}
+                  >
+                    <ToggleSwitch
+                      checked={isAdvancedScoreCalculation}
+                      onChange={setIsAdvancedScoreCalculation}
+                      disabled={isVoteForTeammate}
+                    />
+                    <div className='text-left w-100'>
+                      <div className='font-bold text-sm text-color-white text-left'>
+                        Matematikai hendikep kiegyenlítés
+                      </div>
+                      <div className='text-sm text-color-grey font-normal mt-2 text-left'>
+                        {isVoteForTeammate
+                          ? 'Nem szükséges, mert a csapattárs szavazás aktív.'
+                          : 'Ha bekapcsolod, a csoportos előadók hátrányát egy komplex számítás kiküszöböli.'}
+                      </div>
                     </div>
                   </div>
                 </div>
-
-                {/* Advanced Matematika Toggle */}
-                <div className='flex flex-row flex-justify-space-between flex-align-center gap-16 mt-4'>
-                  <ToggleSwitch
-                    checked={isAdvancedScoreCalculation}
-                    onChange={setIsAdvancedScoreCalculation}
-                  />
-                  <div className='text-left'>
-                    <div className='font-bold text-sm text-color-white text-left'>
-                      Matematikai hendikep kiegyenlítés
-                    </div>
-                    <div className='text-sm text-color-grey font-normal mt-2 text-left'>
-                      Ha bekapcsolod, a csoportos előadók hátrányát egy komplex
-                      számítás kiküszöböli.
-                    </div>
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
           </div>
 
