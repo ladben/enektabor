@@ -132,7 +132,9 @@ const WaitRoom = () => {
   if (!user || perfLoading || !profileDisplay) return <Spinner />;
 
   return (
-    <div className='flex flex-column gap-24 flex-align-center w-100 h-100 ofy-hidden pos-rel pb-112'>
+    <div
+      className={`flex flex-column gap-24 flex-align-center w-100 h-100 ofy-hidden pos-rel ${isJury ? 'pb-112' : 'pb-8'}`}
+    >
       <div className='flex flex-column flex-align-center w-100'>
         <Title text='Chill zone' />
         <Subtitle text='Koppints, és jegyzetelj, amíg el nem kezdődik a szavazás' />
