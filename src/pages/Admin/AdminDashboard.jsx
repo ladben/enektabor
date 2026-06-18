@@ -1,16 +1,18 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { Title, Button, Spinner } from '../../components';
+import { useNavigate } from 'react-router-dom'; // 🌟 HOZZÁADVA: Router navigáció az átirányításhoz
 import bcrypt from 'bcryptjs';
 
 const AdminDashboard = () => {
+  const navigate = useNavigate(); // 🌟 HOZZÁADVA
   const fileInputRefs = useRef({});
   const [competitions, setCompetitions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingComp, setEditingComp] = useState(null);
 
   // Jogosultsági állapotok a belépés módja alapján
-  const adminMode = sessionStorage.getItem('admin_mode') || 'limited';
+  const adminMode = sessionStorage.getItem('admin_mode'); // 🌟 MÓDOSÍTVA: Kivettük a || 'limited' fallback-et, hogy ellenőrizhető legyen a tiszta hiány
   const adminUserId = sessionStorage.getItem('admin_user_id');
   const isSuperAdmin = adminMode === 'superadmin';
 
@@ -47,11 +49,19 @@ const AdminDashboard = () => {
   const [newSongTitle, setNewSongTitle] = useState('');
   const [activeSongAddingUserId, setActiveSongAddingUserId] = useState(null);
 
+  // 🌟 MÓDOSÍTVA: Biztonsági kapu és adatletöltés szinkronizálása
   useEffect(() => {
+    // 1. Ha az admin_mode teljesen hiányzik (nem jelentkezett be az admin jelszóval), azonnal visszadobjuk
+    if (!adminMode) {
+      navigate('/', { replace: true });
+      return;
+    }
+
+    // 2. Ha érvényes a munkamenet, csak akkor engedjük elindulni a hálózati kéréseket
     fetchCompetitions();
     fetchGlobalData();
     fetchAdminName();
-  }, []);
+  }, [adminMode, navigate]); // 🌟 Figyeli a változásokat
 
   const fetchAdminName = async () => {
     if (isSuperAdmin) {
@@ -1049,7 +1059,7 @@ const AdminDashboard = () => {
                               toggleParticipantRole(person.id, 'is_voter')
                             }
                           >
-                            Voter
+                            Szavazó
                           </button>
                           <button
                             className={`px-8 py-4 text-sm b-radius-5 font-bold border-none ${part.is_jury ? 'bg-text text-color-bg' : 'bg-grey text-color-bg'}`}
@@ -1058,7 +1068,7 @@ const AdminDashboard = () => {
                               toggleParticipantRole(person.id, 'is_jury')
                             }
                           >
-                            Jury
+                            Zsűri
                           </button>
                           <button
                             className={`px-8 py-4 text-sm b-radius-5 font-bold border-none ${part.is_performer ? 'bg-text text-color-bg' : 'bg-grey text-color-bg'}`}
@@ -1067,7 +1077,7 @@ const AdminDashboard = () => {
                               toggleParticipantRole(person.id, 'is_performer')
                             }
                           >
-                            Performer
+                            Előadó
                           </button>
                           <button
                             className='px-8 py-4 text-sm bg-acc text-color-white b-radius-5 border-none font-bold ml-6'
