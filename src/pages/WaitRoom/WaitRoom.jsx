@@ -138,7 +138,7 @@ const WaitRoom = () => {
         <Subtitle text='Koppints, és jegyzetelj, amíg el nem kezdődik a szavazás' />
       </div>
 
-      <GridFlow>
+      <GridFlow noPadding={!isJury}>
         <div
           style={{ maxWidth: 'calc((100% - 30px) / 4)' }}
           className='w-100 ar-square'
