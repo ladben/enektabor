@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 import { usePerformancesForPerformer } from '../hooks/usePerformancesForPerformer';
-import { Title, Button, Box } from '../components';
+import { Title, Subtitle, Button, Box } from '../components';
 import { supabase } from '../lib/supabaseClient';
 
 import { motion } from 'framer-motion';
@@ -57,7 +57,11 @@ const SongChoose = () => {
         pos-rel
       `}
     >
-      <Title text='Melyik dalt választottad?' />
+      <div className='flex flex-column flex-align-center w-100'>
+        {performances?.length > 1 && <Title text='Melyik dalt választottad?' />}
+        {performances?.length === 1 && <Title text='Ezt a dalt hoztad?' />}
+        <Subtitle text='Bökj rá a folytatáshoz!' />
+      </div>
       <motion.div
         className='w-100 flex flex-column gap-32 h-100'
         variants={listVariants}
